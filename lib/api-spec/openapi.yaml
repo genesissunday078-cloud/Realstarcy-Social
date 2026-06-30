@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Realstarcy Social Media API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: posts
+    description: Post operations
+  - name: users
+    description: User operations
+  - name: comments
+    description: Comment operations
+  - name: notifications
+    description: Notification operations
+  - name: feed
+    description: Feed operations
 paths:
   /healthz:
     get:
@@ -24,6 +34,347 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /feed:
+    get:
+      operationId: getFeed
+      tags: [feed]
+      summary: Get discovery feed
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Feed posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostFeed"
+
+  /trending:
+    get:
+      operationId: getTrending
+      tags: [feed]
+      summary: Get trending posts and tags
+      responses:
+        "200":
+          description: Trending data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendingData"
+
+  /stats:
+    get:
+      operationId: getPlatformStats
+      tags: [feed]
+      summary: Get platform stats
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
+  /posts:
+    get:
+      operationId: listPosts
+      tags: [posts]
+      summary: List posts
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: tag
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: cursor
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: List of posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostFeed"
+    post:
+      operationId: createPost
+      tags: [posts]
+      summary: Create a post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+      responses:
+        "201":
+          description: Created post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+
+  /posts/{id}:
+    get:
+      operationId: getPost
+      tags: [posts]
+      summary: Get a post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          description: Not found
+    delete:
+      operationId: deletePost
+      tags: [posts]
+      summary: Delete a post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /posts/{id}/star:
+    post:
+      operationId: starPost
+      tags: [posts]
+      summary: Star a post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated star count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StarResult"
+    delete:
+      operationId: unstarPost
+      tags: [posts]
+      summary: Unstar a post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated star count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StarResult"
+
+  /posts/{id}/comments:
+    get:
+      operationId: getComments
+      tags: [comments]
+      summary: Get comments for a post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Add a comment to a post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /posts/{id}/comments/{commentId}:
+    delete:
+      operationId: deleteComment
+      tags: [comments]
+      summary: Delete a comment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    put:
+      operationId: updateMe
+      tags: [users]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{username}:
+    get:
+      operationId: getUserProfile
+      tags: [users]
+      summary: Get a user profile by username
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+
+  /users/{username}/follow:
+    post:
+      operationId: followUser
+      tags: [users]
+      summary: Follow a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Follow result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+    delete:
+      operationId: unfollowUser
+      tags: [users]
+      summary: Unfollow a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unfollow result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+
+  /notifications:
+    get:
+      operationId: getNotifications
+      tags: [notifications]
+      summary: Get notifications
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/read:
+    put:
+      operationId: markNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +385,203 @@ components:
       required:
         - status
 
+    User:
+      type: object
+      required: [id, username, displayName, avatar, bio, postCount, starCount, isFollowing, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+        bio:
+          type: string
+        postCount:
+          type: integer
+        starCount:
+          type: integer
+        isFollowing:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        bio:
+          type: string
+        avatar:
+          type: string
+
+    Post:
+      type: object
+      required: [id, userId, author, content, starCount, commentCount, isStarred, tags, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        author:
+          $ref: "#/components/schemas/UserSummary"
+        content:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        starCount:
+          type: integer
+        commentCount:
+          type: integer
+        isStarred:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    PostInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+        imageUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    UserSummary:
+      type: object
+      required: [id, username, displayName, avatar]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+
+    PostFeed:
+      type: object
+      required: [posts, hasMore]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: ["string", "null"]
+
+    Comment:
+      type: object
+      required: [id, postId, author, content, createdAt]
+      properties:
+        id:
+          type: integer
+        postId:
+          type: integer
+        author:
+          $ref: "#/components/schemas/UserSummary"
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    CommentInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+
+    Notification:
+      type: object
+      required: [id, type, fromUser, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [star, comment, follow, mention]
+        fromUser:
+          $ref: "#/components/schemas/UserSummary"
+        postId:
+          type: ["integer", "null"]
+        postContent:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+
+    StarResult:
+      type: object
+      required: [starCount, isStarred]
+      properties:
+        starCount:
+          type: integer
+        isStarred:
+          type: boolean
+
+    FollowResult:
+      type: object
+      required: [isFollowing]
+      properties:
+        isFollowing:
+          type: boolean
+
+    TrendingData:
+      type: object
+      required: [posts, tags]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendingTag"
+
+    TrendingTag:
+      type: object
+      required: [tag, count]
+      properties:
+        tag:
+          type: string
+        count:
+          type: integer
+
+    PlatformStats:
+      type: object
+      required: [totalPosts, totalUsers, totalStars, newPostsToday]
+      properties:
+        totalPosts:
+          type: integer
+        totalUsers:
+          type: integer
+        totalStars:
+          type: integer
+        newPostsToday:
+          type: integer
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
