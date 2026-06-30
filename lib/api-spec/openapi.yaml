@@ -387,7 +387,7 @@ components:
 
     User:
       type: object
-      required: [id, username, displayName, avatar, bio, postCount, starCount, isFollowing, createdAt]
+      required: [id, username, displayName, avatar, bio, postCount, starCount, followerCount, followingCount, isFollowing, createdAt]
       properties:
         id:
           type: integer
@@ -402,6 +402,10 @@ components:
         postCount:
           type: integer
         starCount:
+          type: integer
+        followerCount:
+          type: integer
+        followingCount:
           type: integer
         isFollowing:
           type: boolean

@@ -1,105 +1,410 @@
-import { useGetFeed, useGetPlatformStats, useGetMe } from "@workspace/api-client-react";
-import PostCard from "@/components/PostCard";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "wouter";
-import { motion } from "framer-motion";
-import { PlusCircle } from "lucide-react";
+import { useState, useRef } from "react";
+import { Link, useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Star, MessageCircle, Share2, Bell, Settings,
+  Home, TrendingUp, PlusSquare, User, ChevronDown,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  useGetFeed, useGetMe, useGetNotifications,
+  useStarPost, useUnstarPost, useFollowUser, useUnfollowUser,
+  getGetFeedQueryKey, getListPostsQueryKey, getGetPostQueryKey, getGetTrendingQueryKey,
+  getGetUserProfileQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+import type { Post } from "@workspace/api-client-react";
 
-function StatBadge({ label, value }: { label: string; value: number }) {
+const GRADIENTS = [
+  "from-indigo-950 via-purple-900 to-slate-900",
+  "from-slate-900 via-teal-950 to-slate-900",
+  "from-amber-950 via-orange-900 to-slate-900",
+  "from-slate-900 via-rose-950 to-slate-900",
+  "from-emerald-950 via-slate-900 to-slate-900",
+];
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
+}
+
+interface SlideProps {
+  post: Post;
+  index: number;
+}
+
+function PostSlide({ post, index }: SlideProps) {
+  const queryClient = useQueryClient();
+  const [isStarred, setIsStarred] = useState(post.isStarred);
+  const [starCount, setStarCount] = useState(post.starCount);
+  const [starBurst, setStarBurst] = useState(false);
+  const [followed, setFollowed] = useState(false);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+
+  const starMutation = useStarPost({
+    mutation: {
+      onSuccess: (data) => {
+        setStarCount(data.starCount);
+        setIsStarred(data.isStarred);
+        queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+      },
+    },
+  });
+  const unstarMutation = useUnstarPost({
+    mutation: {
+      onSuccess: (data) => {
+        setStarCount(data.starCount);
+        setIsStarred(data.isStarred);
+        queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+      },
+    },
+  });
+  const followMutation = useFollowUser({
+    mutation: {
+      onSuccess: () => {
+        setFollowed(true);
+        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(post.author.username) });
+      },
+    },
+  });
+  const unfollowMutation = useUnfollowUser({
+    mutation: {
+      onSuccess: () => {
+        setFollowed(false);
+        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(post.author.username) });
+      },
+    },
+  });
+
+  const handleStar = () => {
+    if (isStarred) {
+      unstarMutation.mutate({ id: post.id });
+    } else {
+      setStarBurst(true);
+      setTimeout(() => setStarBurst(false), 700);
+      starMutation.mutate({ id: post.id });
+    }
+  };
+
+  const handleFollow = () => {
+    if (followed) {
+      unfollowMutation.mutate({ username: post.author.username });
+    } else {
+      followMutation.mutate({ username: post.author.username });
+    }
+  };
+
+  const gradient = GRADIENTS[index % GRADIENTS.length];
+
   return (
-    <div className="text-center">
-      <p className="text-lg font-serif text-primary font-semibold">{value.toLocaleString()}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="relative w-full flex-shrink-0" style={{ height: "100dvh" }}>
+      {/* Background */}
+      {post.imageUrl ? (
+        <img
+          src={post.imageUrl}
+          alt="post"
+          className="absolute inset-0 w-full h-full object-cover"
+          loading={index === 0 ? "eager" : "lazy"}
+        />
+      ) : (
+        <div className={cn("absolute inset-0 bg-gradient-to-br", gradient)} />
+      )}
+
+      {/* Gradient overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/40" />
+
+      {/* Right action bar */}
+      <div className="absolute right-3 bottom-28 flex flex-col items-center gap-5 z-20">
+        {/* Author avatar */}
+        <Link href={`/profile/${post.author.username}`}>
+          <div className="relative">
+            <Avatar className="w-11 h-11 border-2 border-white/80 shadow-lg">
+              <AvatarImage src={post.author.avatar} />
+              <AvatarFallback className="bg-primary/30 text-white text-sm font-bold">
+                {post.author.displayName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <button
+              onClick={(e) => { e.preventDefault(); handleFollow(); }}
+              className={cn(
+                "absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow transition-all",
+                followed
+                  ? "bg-muted-foreground text-black"
+                  : "bg-primary text-black"
+              )}
+            >
+              {followed ? "✓" : "+"}
+            </button>
+          </div>
+        </Link>
+
+        {/* Star */}
+        <div className="flex flex-col items-center gap-1">
+          <motion.button
+            onClick={handleStar}
+            whileTap={{ scale: 0.75 }}
+            className="relative w-11 h-11 flex items-center justify-center"
+          >
+            <AnimatePresence>
+              {starBurst && (
+                <motion.div
+                  key="burst"
+                  initial={{ scale: 0.5, opacity: 0.9 }}
+                  animate={{ scale: 3, opacity: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 rounded-full bg-primary"
+                />
+              )}
+            </AnimatePresence>
+            <motion.div animate={isStarred ? { rotate: [0, -20, 20, 0], scale: [1, 1.3, 1] } : {}}>
+              <Star
+                size={28}
+                fill={isStarred ? "#f5a623" : "none"}
+                stroke={isStarred ? "#f5a623" : "white"}
+                strokeWidth={1.5}
+              />
+            </motion.div>
+          </motion.button>
+          <span className="text-white text-xs font-semibold drop-shadow">{starCount.toLocaleString()}</span>
+        </div>
+
+        {/* Comment */}
+        <div className="flex flex-col items-center gap-1">
+          <Link href={`/post/${post.id}`}>
+            <button className="w-11 h-11 flex items-center justify-center">
+              <MessageCircle size={28} stroke="white" strokeWidth={1.5} fill="none" />
+            </button>
+          </Link>
+          <span className="text-white text-xs font-semibold drop-shadow">{post.commentCount}</span>
+        </div>
+
+        {/* Share */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ url: window.location.origin + `/post/${post.id}` });
+              }
+            }}
+            className="w-11 h-11 flex items-center justify-center"
+          >
+            <Share2 size={26} stroke="white" strokeWidth={1.5} />
+          </button>
+          <span className="text-white text-xs font-semibold drop-shadow opacity-0">0</span>
+        </div>
+      </div>
+
+      {/* Bottom info bar */}
+      <div className="absolute bottom-0 left-0 right-16 p-5 pb-8 z-20">
+        {/* Author */}
+        <div className="flex items-center gap-2.5 mb-3">
+          <Link href={`/profile/${post.author.username}`}>
+            <p className="text-white font-bold text-[15px] leading-tight hover:text-primary/90 transition-colors">
+              {post.author.displayName}
+            </p>
+          </Link>
+          <span className="text-white/50 text-xs">·</span>
+          <span className="text-white/50 text-xs">{formatDate(post.createdAt)}</span>
+          {!followed && (
+            <>
+              <span className="text-white/50 text-xs">·</span>
+              <button
+                onClick={handleFollow}
+                className="text-primary text-xs font-bold hover:text-primary/80"
+              >
+                Follow
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Caption */}
+        <button
+          onClick={() => setCaptionExpanded(v => !v)}
+          className="text-left w-full"
+        >
+          <p className={cn(
+            "text-white/90 text-sm leading-relaxed",
+            !captionExpanded && "line-clamp-2"
+          )}>
+            {post.content}
+          </p>
+          {post.content.length > 100 && !captionExpanded && (
+            <span className="text-white/50 text-xs mt-0.5 inline-block">more</span>
+          )}
+        </button>
+
+        {/* Tags */}
+        {post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {post.tags.map(tag => (
+              <Link key={tag} href={`/trending?tag=${tag}`}>
+                <span className="text-primary text-xs font-medium hover:text-primary/80">#{tag}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+function BottomNav() {
+  const [location] = useLocation();
+  const { data: notifications } = useGetNotifications();
+  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  const items = [
+    { href: "/", icon: Home, label: "Home" },
+    { href: "/trending", icon: TrendingUp, label: "Trending" },
+    { href: "/create", icon: PlusSquare, label: "Post" },
+    { href: "/notifications", icon: Bell, label: "Alerts", badge: unreadCount },
+    { href: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/70 backdrop-blur-md border-t border-white/10">
+      <div className="flex items-center justify-around h-16">
+        {items.map(({ href, icon: Icon, label, badge }) => {
+          const isActive = href === "/" ? location === "/" : location.startsWith(href);
+          return (
+            <Link key={href} href={href}>
+              <div className={cn(
+                "flex flex-col items-center gap-0.5 px-3 py-2 relative transition-colors",
+                isActive ? "text-primary" : "text-white/60"
+              )}>
+                <div className="relative">
+                  <Icon size={22} />
+                  {badge !== undefined && badge > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-black text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] font-medium">{label}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
 export default function Feed() {
   const { data: feedData, isLoading } = useGetFeed({ limit: 20 });
-  const { data: stats } = useGetPlatformStats();
   const { data: me } = useGetMe();
+  const { data: notifications } = useGetNotifications();
+  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const posts = feedData?.posts ?? [];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-serif text-2xl text-foreground">Discovery Feed</h2>
-          <Link href="/create">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium"
-            >
-              <PlusCircle size={16} />
-              Post
-            </motion.button>
+    <div className="relative w-full bg-black" style={{ height: "100dvh" }}>
+      {/* Top bar overlay */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-safe-top py-3 pointer-events-none">
+        <div className="pointer-events-auto">
+          <Link href="/">
+            <span className="font-serif text-xl text-white drop-shadow-lg tracking-tight">Realstarcy</span>
           </Link>
         </div>
-        <p className="text-sm text-muted-foreground">Real moments from real people. No algorithms. No performance.</p>
+
+        <div className="flex items-center gap-1 pointer-events-auto">
+          <button className="text-white/90 font-bold text-[15px] border-b-2 border-white pb-0.5 drop-shadow">
+            For You
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 pointer-events-auto">
+          <Link href="/notifications">
+            <div className="relative">
+              <Bell size={22} stroke="white" strokeWidth={1.5} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-black text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+          </Link>
+          <Link href={me ? `/profile/${me.username}` : "/settings"}>
+            <Avatar className="w-7 h-7 border border-white/50">
+              <AvatarImage src={me?.avatar} />
+              <AvatarFallback className="bg-primary/30 text-white text-xs">
+                {me?.displayName?.charAt(0) ?? "?"}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
+        </div>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center justify-around bg-card border border-card-border rounded-xl p-4 mb-6"
-        >
-          <StatBadge label="moments shared" value={stats.totalPosts} />
-          <div className="w-px h-8 bg-border" />
-          <StatBadge label="stars given" value={stats.totalStars} />
-          <div className="w-px h-8 bg-border" />
-          <StatBadge label="real people" value={stats.totalUsers} />
-          <div className="w-px h-8 bg-border" />
-          <StatBadge label="today" value={stats.newPostsToday} />
-        </motion.div>
-      )}
-
-      {/* Posts */}
-      <div className="flex flex-col gap-4">
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-card border border-card-border rounded-xl p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <Skeleton className="w-9 h-9 rounded-full" />
-                <div className="flex-1">
-                  <Skeleton className="h-3 w-32 mb-1.5" />
-                  <Skeleton className="h-2.5 w-24" />
-                </div>
-              </div>
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-3/4 mb-4" />
-              <Skeleton className="h-36 w-full rounded-lg" />
-            </div>
-          ))
-        ) : feedData?.posts.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="font-serif text-xl text-muted-foreground mb-2">Quiet here.</p>
-            <p className="text-sm text-muted-foreground mb-4">Be the first to share something real.</p>
+      {/* Snap scroll container */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
+            />
+            <p className="text-white/60 text-sm font-sans">Loading moments…</p>
+          </div>
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center px-6">
+            <p className="font-serif text-2xl text-white mb-2">Quiet here.</p>
+            <p className="text-white/60 text-sm mb-6">Be the first to share something real.</p>
             <Link href="/create">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium"
+                className="bg-primary text-black px-6 py-3 rounded-xl text-sm font-bold"
               >
                 Share a moment
               </motion.button>
             </Link>
           </div>
-        ) : (
-          feedData?.posts.map((post, i) => (
+        </div>
+      ) : (
+        <div
+          ref={containerRef}
+          className="h-full overflow-y-scroll"
+          style={{
+            scrollSnapType: "y mandatory",
+            scrollBehavior: "smooth",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {posts.map((post, i) => (
+            <div key={post.id} style={{ scrollSnapAlign: "start" }}>
+              <PostSlide post={post} index={i} />
+            </div>
+          ))}
+
+          {/* Scroll hint on first post */}
+          {posts.length > 1 && (
             <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06, duration: 0.3 }}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: [1, 0.4, 1] }}
+              transition={{ repeat: 2, duration: 1.2, delay: 2 }}
+              className="fixed bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none z-40"
             >
-              <PostCard post={post} />
+              <ChevronDown size={20} className="text-white/50" />
             </motion.div>
-          ))
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
+      <BottomNav />
     </div>
   );
 }

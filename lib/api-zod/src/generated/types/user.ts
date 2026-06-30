@@ -14,6 +14,8 @@ export interface User {
   bio: string;
   postCount: number;
   starCount: number;
+  followerCount: number;
+  followingCount: number;
   isFollowing: boolean;
   createdAt: string;
 }

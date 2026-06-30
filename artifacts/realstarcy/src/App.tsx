@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +10,7 @@ import PostDetail from "@/pages/PostDetail";
 import Profile from "@/pages/Profile";
 import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
+import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -21,20 +22,48 @@ const queryClient = new QueryClient({
   },
 });
 
+function isLoggedIn() {
+  return typeof localStorage !== "undefined" && !!localStorage.getItem("realstarcy_logged_in");
+}
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  if (!isLoggedIn() && location !== "/login") {
+    return <Redirect to="/login" />;
+  }
+  return <>{children}</>;
+}
+
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Feed} />
-        <Route path="/trending" component={Trending} />
-        <Route path="/create" component={CreatePost} />
-        <Route path="/post/:id" component={PostDetail} />
-        <Route path="/profile/:username" component={Profile} />
-        <Route path="/notifications" component={Notifications} />
-        <Route path="/settings" component={Settings} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Login — no layout, no auth guard */}
+      <Route path="/login" component={Login} />
+
+      {/* Feed — full-screen, no sidebar layout */}
+      <Route path="/">
+        <AuthGuard>
+          <Feed />
+        </AuthGuard>
+      </Route>
+
+      {/* All other pages use standard Layout */}
+      <Route>
+        <AuthGuard>
+          <Layout>
+            <Switch>
+              <Route path="/trending" component={Trending} />
+              <Route path="/create" component={CreatePost} />
+              <Route path="/post/:id" component={PostDetail} />
+              <Route path="/profile/:username" component={Profile} />
+              <Route path="/notifications" component={Notifications} />
+              <Route path="/settings" component={Settings} />
+              <Route component={NotFound} />
+            </Switch>
+          </Layout>
+        </AuthGuard>
+      </Route>
+    </Switch>
   );
 }
 

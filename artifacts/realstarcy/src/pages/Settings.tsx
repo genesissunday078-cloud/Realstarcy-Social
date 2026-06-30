@@ -6,10 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Settings as SettingsIcon, Check } from "lucide-react";
+import { Settings as SettingsIcon, Check, LogOut } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Settings() {
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const { data: me } = useGetMe();
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -118,10 +120,25 @@ export default function Settings() {
       <div className="mt-6 bg-card border border-card-border rounded-xl p-6">
         <h3 className="font-serif text-base mb-3">About Realstarcy</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Realstarcy was built on one principle: share what's real. No follower counts. No algorithmic pressure. 
-          Just authentic moments, starred by real people. You star what you genuinely connect with — not what 
+          Realstarcy was built on one principle: share what's real. No algorithmic pressure.
+          Just authentic moments, starred by real people. You star what you genuinely connect with — not what
           you think you're supposed to like.
         </p>
+      </div>
+
+      <div className="mt-4">
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            localStorage.removeItem("realstarcy_logged_in");
+            navigate("/login");
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/5 transition-colors"
+        >
+          <LogOut size={16} />
+          Sign out
+        </motion.button>
       </div>
     </div>
   );

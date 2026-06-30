@@ -1,17 +1,34 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { usersTable, followsTable, notificationsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { UpdateMeBody } from "@workspace/api-zod";
 
 const router = Router();
 
 const DEFAULT_CURRENT_USER_ID = 1;
 
+async function getFollowCounts(userId: number) {
+  const [followerRow] = await db
+    .select({ count: sql<number>`cast(count(*) as int)` })
+    .from(followsTable)
+    .where(eq(followsTable.followingId, userId));
+  const [followingRow] = await db
+    .select({ count: sql<number>`cast(count(*) as int)` })
+    .from(followsTable)
+    .where(eq(followsTable.followerId, userId));
+  return {
+    followerCount: followerRow?.count ?? 0,
+    followingCount: followingRow?.count ?? 0,
+  };
+}
+
 router.get("/users/me", async (req, res) => {
   const currentUserId = DEFAULT_CURRENT_USER_ID;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1);
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
+
+  const { followerCount, followingCount } = await getFollowCounts(user.id);
 
   res.json({
     id: user.id,
@@ -21,6 +38,8 @@ router.get("/users/me", async (req, res) => {
     bio: user.bio,
     postCount: user.postCount,
     starCount: user.starCount,
+    followerCount,
+    followingCount,
     isFollowing: false,
     createdAt: user.createdAt.toISOString(),
   });
@@ -37,6 +56,7 @@ router.put("/users/me", async (req, res) => {
   if (parsed.data.avatar !== undefined) updates.avatar = parsed.data.avatar;
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, currentUserId)).returning();
+  const { followerCount, followingCount } = await getFollowCounts(updated.id);
 
   res.json({
     id: updated.id,
@@ -46,6 +66,8 @@ router.put("/users/me", async (req, res) => {
     bio: updated.bio,
     postCount: updated.postCount,
     starCount: updated.starCount,
+    followerCount,
+    followingCount,
     isFollowing: false,
     createdAt: updated.createdAt.toISOString(),
   });
@@ -62,6 +84,8 @@ router.get("/users/:username", async (req, res) => {
     .where(and(eq(followsTable.followerId, currentUserId), eq(followsTable.followingId, user.id)))
     .limit(1);
 
+  const { followerCount, followingCount } = await getFollowCounts(user.id);
+
   res.json({
     id: user.id,
     username: user.username,
@@ -70,6 +94,8 @@ router.get("/users/:username", async (req, res) => {
     bio: user.bio,
     postCount: user.postCount,
     starCount: user.starCount,
+    followerCount,
+    followingCount,
     isFollowing: follow.length > 0,
     createdAt: user.createdAt.toISOString(),
   });

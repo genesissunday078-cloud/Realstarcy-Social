@@ -36,13 +36,9 @@ router.get("/feed", async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 20;
   const cursor = req.query.cursor as string | undefined;
 
-  let query = db.select().from(postsTable).orderBy(desc(postsTable.createdAt)).limit(limit + 1);
-  if (cursor) {
-    const cursorDate = new Date(cursor);
-    query = db.select().from(postsTable).where(lt(postsTable.createdAt, cursorDate)).orderBy(desc(postsTable.createdAt)).limit(limit + 1);
-  }
-
-  const posts = await query;
+  const posts = await (cursor
+    ? db.select().from(postsTable).where(lt(postsTable.createdAt, new Date(cursor))).orderBy(desc(postsTable.createdAt)).limit(limit + 1)
+    : db.select().from(postsTable).orderBy(desc(postsTable.createdAt)).limit(limit + 1));
   const hasMore = posts.length > limit;
   const slice = hasMore ? posts.slice(0, limit) : posts;
 

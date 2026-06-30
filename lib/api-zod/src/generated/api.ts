@@ -284,6 +284,8 @@ export const GetMeResponse = zod.object({
   "bio": zod.string(),
   "postCount": zod.number(),
   "starCount": zod.number(),
+  "followerCount": zod.number(),
+  "followingCount": zod.number(),
   "isFollowing": zod.boolean(),
   "createdAt": zod.string()
 })
@@ -306,6 +308,8 @@ export const UpdateMeResponse = zod.object({
   "bio": zod.string(),
   "postCount": zod.number(),
   "starCount": zod.number(),
+  "followerCount": zod.number(),
+  "followingCount": zod.number(),
   "isFollowing": zod.boolean(),
   "createdAt": zod.string()
 })
@@ -326,6 +330,8 @@ export const GetUserProfileResponse = zod.object({
   "bio": zod.string(),
   "postCount": zod.number(),
   "starCount": zod.number(),
+  "followerCount": zod.number(),
+  "followingCount": zod.number(),
   "isFollowing": zod.boolean(),
   "createdAt": zod.string()
 })
