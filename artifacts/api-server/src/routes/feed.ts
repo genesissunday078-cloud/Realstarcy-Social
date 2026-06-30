@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { postsTable, starsTable, usersTable, followsTable } from "@workspace/db";
-import { eq, desc, and, lt } from "drizzle-orm";
+import { eq, desc, and, lt, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 const router = Router();
@@ -81,6 +81,41 @@ router.get("/stats", async (req, res) => {
   const [{ newPostsToday }] = await db.select({ newPostsToday: sql<number>`count(*)::int` }).from(postsTable).where(sql`${postsTable.createdAt} >= ${today}`);
 
   res.json({ totalPosts, totalUsers, totalStars, newPostsToday });
+});
+
+router.get("/feed/following", async (req, res) => {
+  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const cursor = req.query.cursor as string | undefined;
+
+  const following = await db
+    .select({ followingId: followsTable.followingId })
+    .from(followsTable)
+    .where(eq(followsTable.followerId, currentUserId));
+
+  const followingIds = following.map(f => f.followingId);
+
+  if (followingIds.length === 0) {
+    res.json({ posts: [], hasMore: false, nextCursor: null });
+    return;
+  }
+
+  const posts = await (cursor
+    ? db.select().from(postsTable)
+        .where(and(inArray(postsTable.userId, followingIds), lt(postsTable.createdAt, new Date(cursor))))
+        .orderBy(desc(postsTable.createdAt))
+        .limit(limit + 1)
+    : db.select().from(postsTable)
+        .where(inArray(postsTable.userId, followingIds))
+        .orderBy(desc(postsTable.createdAt))
+        .limit(limit + 1));
+
+  const hasMore = posts.length > limit;
+  const slice = hasMore ? posts.slice(0, limit) : posts;
+  const formatted = await Promise.all(slice.map(p => formatPost(p, currentUserId)));
+  const nextCursor = hasMore ? slice[slice.length - 1]?.createdAt.toISOString() ?? null : null;
+
+  res.json({ posts: formatted, hasMore, nextCursor });
 });
 
 export { formatPost };

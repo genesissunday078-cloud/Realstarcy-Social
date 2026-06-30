@@ -57,6 +57,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/PostFeed"
 
+  /feed/following:
+    get:
+      operationId: getFollowingFeed
+      tags: [feed]
+      summary: Get posts from followed users
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Following feed posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostFeed"
+
   /trending:
     get:
       operationId: getTrending

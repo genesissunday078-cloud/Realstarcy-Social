@@ -1,24 +1,34 @@
+import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetUserProfile,
   useListPosts,
   useFollowUser,
   useUnfollowUser,
   useGetMe,
+  useUpdateMe,
   getGetUserProfileQueryKey,
   getListPostsQueryKey,
+  getGetMeQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import PostCard from "@/components/PostCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star, FileText, Users } from "lucide-react";
-import { Link } from "wouter";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Star, Pencil, X, Check } from "lucide-react";
 
 export default function Profile() {
   const { username } = useParams<{ username: string }>();
   const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatar, setAvatar] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const { data: user, isLoading: userLoading } = useGetUserProfile(username ?? "", {
     query: { enabled: !!username, queryKey: getGetUserProfileQueryKey(username ?? "") },
@@ -28,6 +38,28 @@ export default function Profile() {
     { query: { enabled: !!user?.id, queryKey: getListPostsQueryKey({ userId: user?.id }) } }
   );
   const { data: me } = useGetMe();
+
+  useEffect(() => {
+    if (user && editOpen) {
+      setDisplayName(user.displayName);
+      setBio(user.bio ?? "");
+      setAvatar(user.avatar ?? "");
+    }
+  }, [user, editOpen]);
+
+  const updateMe = useUpdateMe({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") });
+        setSaved(true);
+        setTimeout(() => {
+          setSaved(false);
+          setEditOpen(false);
+        }, 1200);
+      },
+    },
+  });
 
   const followMutation = useFollowUser({
     mutation: {
@@ -56,6 +88,11 @@ export default function Profile() {
     }
   };
 
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateMe.mutate({ data: { displayName, bio, avatar } });
+  };
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {userLoading ? (
@@ -72,8 +109,6 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          <Skeleton className="h-3.5 w-full mb-1.5" />
-          <Skeleton className="h-3.5 w-2/3" />
         </div>
       ) : user ? (
         <motion.div
@@ -81,12 +116,12 @@ export default function Profile() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          {/* Cover / Header */}
+          {/* Cover */}
           <div className="relative -mx-4 mb-6">
-            <div className="h-32 bg-gradient-to-br from-primary/20 via-primary/5 to-background rounded-b-2xl" />
+            <div className="h-28 bg-gradient-to-br from-primary/25 via-primary/8 to-background rounded-b-2xl" />
             <div className="absolute -bottom-10 left-4">
               <Avatar className="w-20 h-20 border-4 border-background shadow-xl">
-                <AvatarImage src={user.avatar} alt={user.displayName} />
+                <AvatarImage src={editOpen ? avatar : user.avatar} alt={user.displayName} />
                 <AvatarFallback className="bg-primary/20 text-primary text-2xl font-serif">
                   {user.displayName.charAt(0)}
                 </AvatarFallback>
@@ -101,15 +136,15 @@ export default function Profile() {
             </div>
 
             {isOwnProfile ? (
-              <Link href="/settings">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="px-5 py-2 rounded-lg text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors"
-                >
-                  Edit profile
-                </motion.button>
-              </Link>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setEditOpen(v => !v)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors"
+              >
+                <Pencil size={14} />
+                Edit profile
+              </motion.button>
             ) : (
               <motion.button
                 whileHover={{ scale: 1.03 }}
@@ -127,7 +162,7 @@ export default function Profile() {
             )}
           </div>
 
-          {user.bio && (
+          {user.bio && !editOpen && (
             <p className="text-sm text-foreground/80 leading-relaxed mt-3">{user.bio}</p>
           )}
 
@@ -151,6 +186,83 @@ export default function Profile() {
               <span className="text-muted-foreground text-xs">stars</span>
             </div>
           </div>
+
+          {/* Inline edit form */}
+          <AnimatePresence>
+            {editOpen && (
+              <motion.form
+                key="edit-form"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleSaveProfile}
+                className="mt-5 bg-card border border-border rounded-xl p-5 space-y-4 overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-serif text-base">Edit profile</h3>
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-14 h-14 flex-shrink-0">
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-lg font-serif">
+                      {displayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">Avatar URL</Label>
+                    <Input
+                      value={avatar}
+                      onChange={e => setAvatar(e.target.value)}
+                      placeholder="https://..."
+                      className="bg-secondary border-border text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Display Name</Label>
+                  <Input
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    className="bg-secondary border-border"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Bio</Label>
+                  <Textarea
+                    value={bio}
+                    onChange={e => setBio(e.target.value)}
+                    placeholder="Something real about you…"
+                    className="bg-secondary border-border resize-none min-h-16"
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-muted-foreground text-right mt-0.5">{bio.length}/200</p>
+                </div>
+
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.97 }}
+                  disabled={updateMe.isPending || !displayName.trim()}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saved ? (
+                    <><Check size={15} /> Saved!</>
+                  ) : updateMe.isPending ? "Saving…" : "Save changes"}
+                </motion.button>
+              </motion.form>
+            )}
+          </AnimatePresence>
         </motion.div>
       ) : (
         <div className="text-center py-16">

@@ -10,6 +10,7 @@ export * from './comment';
 export * from './commentInput';
 export * from './followResult';
 export * from './getFeedParams';
+export * from './getFollowingFeedParams';
 export * from './healthStatus';
 export * from './listPostsParams';
 export * from './notification';

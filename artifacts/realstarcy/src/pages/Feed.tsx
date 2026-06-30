@@ -3,13 +3,13 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, MessageCircle, Share2, Bell, Settings,
-  Home, TrendingUp, PlusSquare, User, ChevronDown,
+  Home, TrendingUp, PlusSquare, ChevronDown, Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  useGetFeed, useGetMe, useGetNotifications,
+  useGetFeed, useGetFollowingFeed, useGetMe, useGetNotifications,
   useStarPost, useUnstarPost, useFollowUser, useUnfollowUser,
-  getGetFeedQueryKey, getListPostsQueryKey, getGetPostQueryKey, getGetTrendingQueryKey,
+  getGetFeedQueryKey, getGetFollowingFeedQueryKey, getGetTrendingQueryKey,
   getGetUserProfileQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,9 +25,7 @@ const GRADIENTS = [
 ];
 
 function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
@@ -47,24 +45,20 @@ function PostSlide({ post, index }: SlideProps) {
   const [followed, setFollowed] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
 
+  const invalidateFeeds = () => {
+    queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetFollowingFeedQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+  };
+
   const starMutation = useStarPost({
     mutation: {
-      onSuccess: (data) => {
-        setStarCount(data.starCount);
-        setIsStarred(data.isStarred);
-        queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
-      },
+      onSuccess: (data) => { setStarCount(data.starCount); setIsStarred(data.isStarred); invalidateFeeds(); },
     },
   });
   const unstarMutation = useUnstarPost({
     mutation: {
-      onSuccess: (data) => {
-        setStarCount(data.starCount);
-        setIsStarred(data.isStarred);
-        queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
-      },
+      onSuccess: (data) => { setStarCount(data.starCount); setIsStarred(data.isStarred); invalidateFeeds(); },
     },
   });
   const followMutation = useFollowUser({
@@ -91,14 +85,6 @@ function PostSlide({ post, index }: SlideProps) {
       setStarBurst(true);
       setTimeout(() => setStarBurst(false), 700);
       starMutation.mutate({ id: post.id });
-    }
-  };
-
-  const handleFollow = () => {
-    if (followed) {
-      unfollowMutation.mutate({ username: post.author.username });
-    } else {
-      followMutation.mutate({ username: post.author.username });
     }
   };
 
@@ -133,12 +119,14 @@ function PostSlide({ post, index }: SlideProps) {
               </AvatarFallback>
             </Avatar>
             <button
-              onClick={(e) => { e.preventDefault(); handleFollow(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                if (followed) unfollowMutation.mutate({ username: post.author.username });
+                else followMutation.mutate({ username: post.author.username });
+              }}
               className={cn(
-                "absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow transition-all",
-                followed
-                  ? "bg-muted-foreground text-black"
-                  : "bg-primary text-black"
+                "absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shadow transition-all",
+                followed ? "bg-muted-foreground text-black" : "bg-primary text-black"
               )}
             >
               {followed ? "✓" : "+"}
@@ -187,37 +175,31 @@ function PostSlide({ post, index }: SlideProps) {
         </div>
 
         {/* Share */}
-        <div className="flex flex-col items-center gap-1">
-          <button
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({ url: window.location.origin + `/post/${post.id}` });
-              }
-            }}
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            <Share2 size={26} stroke="white" strokeWidth={1.5} />
-          </button>
-          <span className="text-white text-xs font-semibold drop-shadow opacity-0">0</span>
-        </div>
+        <button
+          onClick={() => {
+            if (navigator.share) navigator.share({ url: `${window.location.origin}/post/${post.id}` });
+          }}
+          className="w-11 h-11 flex items-center justify-center"
+        >
+          <Share2 size={26} stroke="white" strokeWidth={1.5} />
+        </button>
       </div>
 
-      {/* Bottom info bar */}
+      {/* Bottom info */}
       <div className="absolute bottom-0 left-0 right-16 p-5 pb-8 z-20">
-        {/* Author */}
-        <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <Link href={`/profile/${post.author.username}`}>
             <p className="text-white font-bold text-[15px] leading-tight hover:text-primary/90 transition-colors">
               {post.author.displayName}
             </p>
           </Link>
-          <span className="text-white/50 text-xs">·</span>
+          <span className="text-white/40 text-xs">·</span>
           <span className="text-white/50 text-xs">{formatDate(post.createdAt)}</span>
           {!followed && (
             <>
-              <span className="text-white/50 text-xs">·</span>
+              <span className="text-white/40 text-xs">·</span>
               <button
-                onClick={handleFollow}
+                onClick={() => followMutation.mutate({ username: post.author.username })}
                 className="text-primary text-xs font-bold hover:text-primary/80"
               >
                 Follow
@@ -226,32 +208,60 @@ function PostSlide({ post, index }: SlideProps) {
           )}
         </div>
 
-        {/* Caption */}
-        <button
-          onClick={() => setCaptionExpanded(v => !v)}
-          className="text-left w-full"
-        >
-          <p className={cn(
-            "text-white/90 text-sm leading-relaxed",
-            !captionExpanded && "line-clamp-2"
-          )}>
+        <button onClick={() => setCaptionExpanded(v => !v)} className="text-left w-full">
+          <p className={cn("text-white/90 text-sm leading-relaxed", !captionExpanded && "line-clamp-2")}>
             {post.content}
           </p>
           {post.content.length > 100 && !captionExpanded && (
-            <span className="text-white/50 text-xs mt-0.5 inline-block">more</span>
+            <span className="text-white/50 text-xs">more</span>
           )}
         </button>
 
-        {/* Tags */}
         {post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2.5">
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {post.tags.map(tag => (
               <Link key={tag} href={`/trending?tag=${tag}`}>
-                <span className="text-primary text-xs font-medium hover:text-primary/80">#{tag}</span>
+                <span className="text-primary text-xs font-medium">#{tag}</span>
               </Link>
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function FeedLoader() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center gap-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
+        />
+        <p className="text-white/60 text-sm">Loading moments…</p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyFollowing() {
+  return (
+    <div className="flex items-center justify-center h-full px-6">
+      <div className="text-center">
+        <Users size={40} className="text-white/30 mx-auto mb-4" />
+        <p className="font-serif text-xl text-white mb-2">No one yet</p>
+        <p className="text-white/50 text-sm mb-6">Follow people from the For You feed to see their posts here.</p>
+        <Link href="/trending">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-primary text-black px-6 py-2.5 rounded-xl text-sm font-bold"
+          >
+            Discover people
+          </motion.button>
+        </Link>
       </div>
     </div>
   );
@@ -300,26 +310,44 @@ function BottomNav() {
 }
 
 export default function Feed() {
-  const { data: feedData, isLoading } = useGetFeed({ limit: 20 });
+  const [tab, setTab] = useState<"foryou" | "following">("foryou");
+  const { data: forYouData, isLoading: forYouLoading } = useGetFeed({ limit: 20 });
+  const { data: followingData, isLoading: followingLoading } = useGetFollowingFeed({ limit: 20 });
   const { data: me } = useGetMe();
   const { data: notifications } = useGetNotifications();
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const posts = feedData?.posts ?? [];
+  const posts = tab === "foryou" ? (forYouData?.posts ?? []) : (followingData?.posts ?? []);
+  const isLoading = tab === "foryou" ? forYouLoading : followingLoading;
 
   return (
     <div className="relative w-full bg-black" style={{ height: "100dvh" }}>
-      {/* Top bar overlay */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-safe-top py-3 pointer-events-none">
+      {/* Top bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 pointer-events-none">
         <div className="pointer-events-auto">
           <Link href="/">
             <span className="font-serif text-xl text-white drop-shadow-lg tracking-tight">Realstarcy</span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-1 pointer-events-auto">
-          <button className="text-white/90 font-bold text-[15px] border-b-2 border-white pb-0.5 drop-shadow">
+        {/* Tabs */}
+        <div className="flex items-center gap-1 bg-black/30 backdrop-blur rounded-full px-1 py-1 pointer-events-auto">
+          <button
+            onClick={() => setTab("following")}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all",
+              tab === "following" ? "bg-white text-black" : "text-white/70 hover:text-white"
+            )}
+          >
+            Following
+          </button>
+          <button
+            onClick={() => setTab("foryou")}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all",
+              tab === "foryou" ? "bg-white text-black" : "text-white/70 hover:text-white"
+            )}
+          >
             For You
           </button>
         </div>
@@ -346,63 +374,60 @@ export default function Feed() {
         </div>
       </div>
 
-      {/* Snap scroll container */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="flex flex-col items-center gap-4">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
-            />
-            <p className="text-white/60 text-sm font-sans">Loading moments…</p>
-          </div>
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center px-6">
-            <p className="font-serif text-2xl text-white mb-2">Quiet here.</p>
-            <p className="text-white/60 text-sm mb-6">Be the first to share something real.</p>
-            <Link href="/create">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-primary text-black px-6 py-3 rounded-xl text-sm font-bold"
-              >
-                Share a moment
-              </motion.button>
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div
-          ref={containerRef}
-          className="h-full overflow-y-scroll"
-          style={{
-            scrollSnapType: "y mandatory",
-            scrollBehavior: "smooth",
-            WebkitOverflowScrolling: "touch",
-          }}
+      {/* Snap scroll feed */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="h-full"
         >
-          {posts.map((post, i) => (
-            <div key={post.id} style={{ scrollSnapAlign: "start" }}>
-              <PostSlide post={post} index={i} />
+          {isLoading ? (
+            <FeedLoader />
+          ) : tab === "following" && posts.length === 0 ? (
+            <EmptyFollowing />
+          ) : posts.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center px-6">
+                <p className="font-serif text-2xl text-white mb-2">Quiet here.</p>
+                <p className="text-white/60 text-sm mb-6">Be the first to share something real.</p>
+                <Link href="/create">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-primary text-black px-6 py-3 rounded-xl text-sm font-bold"
+                  >
+                    Share a moment
+                  </motion.button>
+                </Link>
+              </div>
             </div>
-          ))}
-
-          {/* Scroll hint on first post */}
-          {posts.length > 1 && (
-            <motion.div
-              initial={{ opacity: 1 }}
-              animate={{ opacity: [1, 0.4, 1] }}
-              transition={{ repeat: 2, duration: 1.2, delay: 2 }}
-              className="fixed bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none z-40"
+          ) : (
+            <div
+              className="h-full overflow-y-scroll"
+              style={{ scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch" }}
             >
-              <ChevronDown size={20} className="text-white/50" />
-            </motion.div>
+              {posts.map((post, i) => (
+                <div key={post.id} style={{ scrollSnapAlign: "start" }}>
+                  <PostSlide post={post} index={i} />
+                </div>
+              ))}
+              {posts.length > 1 && (
+                <motion.div
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ repeat: 2, duration: 1.2, delay: 2.5 }}
+                  className="fixed bottom-20 left-1/2 -translate-x-1/2 pointer-events-none z-40"
+                >
+                  <ChevronDown size={20} className="text-white/40" />
+                </motion.div>
+              )}
+            </div>
           )}
-        </div>
-      )}
+        </motion.div>
+      </AnimatePresence>
 
       <BottomNav />
     </div>

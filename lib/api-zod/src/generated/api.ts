@@ -49,6 +49,37 @@ export const GetFeedResponse = zod.object({
 
 
 /**
+ * @summary Get posts from followed users
+ */
+export const GetFollowingFeedQueryParams = zod.object({
+  "cursor": zod.coerce.string().nullish(),
+  "limit": zod.coerce.number().nullish()
+})
+
+export const GetFollowingFeedResponse = zod.object({
+  "posts": zod.array(zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "author": zod.object({
+  "id": zod.number(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "avatar": zod.string()
+}),
+  "content": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "starCount": zod.number(),
+  "commentCount": zod.number(),
+  "isStarred": zod.boolean(),
+  "tags": zod.array(zod.string()),
+  "createdAt": zod.string()
+})),
+  "hasMore": zod.boolean(),
+  "nextCursor": zod.string().nullish()
+})
+
+
+/**
  * @summary Get trending posts and tags
  */
 export const GetTrendingResponse = zod.object({

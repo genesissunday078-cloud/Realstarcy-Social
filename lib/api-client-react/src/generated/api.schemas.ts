@@ -140,6 +140,17 @@ cursor?: string | null;
 limit?: number | null;
 };
 
+export type GetFollowingFeedParams = {
+/**
+ * @nullable
+ */
+cursor?: string | null;
+/**
+ * @nullable
+ */
+limit?: number | null;
+};
+
 export type ListPostsParams = {
 /**
  * @nullable

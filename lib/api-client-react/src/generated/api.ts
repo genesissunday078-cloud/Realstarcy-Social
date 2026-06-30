@@ -24,6 +24,7 @@ import type {
   CommentInput,
   FollowResult,
   GetFeedParams,
+  GetFollowingFeedParams,
   HealthStatus,
   ListPostsParams,
   Notification,
@@ -215,6 +216,90 @@ export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError =
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFeedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFollowingFeedUrl = (params?: GetFollowingFeedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/feed/following?${stringifiedParams}` : `/api/feed/following`
+}
+
+/**
+ * @summary Get posts from followed users
+ */
+export const getFollowingFeed = async (params?: GetFollowingFeedParams, options?: RequestInit): Promise<PostFeed> => {
+
+  return customFetch<PostFeed>(getGetFollowingFeedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFollowingFeedQueryKey = (params?: GetFollowingFeedParams,) => {
+    return [
+    `/api/feed/following`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFollowingFeedQueryOptions = <TData = Awaited<ReturnType<typeof getFollowingFeed>>, TError = ErrorType<unknown>>(params?: GetFollowingFeedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFollowingFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowingFeedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowingFeed>>> = ({ signal }) => getFollowingFeed(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFollowingFeed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFollowingFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowingFeed>>>
+export type GetFollowingFeedQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get posts from followed users
+ */
+
+export function useGetFollowingFeed<TData = Awaited<ReturnType<typeof getFollowingFeed>>, TError = ErrorType<unknown>>(
+ params?: GetFollowingFeedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFollowingFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFollowingFeedQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
