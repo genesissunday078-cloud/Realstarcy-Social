@@ -330,25 +330,36 @@ export default function Feed() {
           </Link>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 bg-black/30 backdrop-blur rounded-full px-1 py-1 pointer-events-auto">
+        {/* Tabs — TikTok style: Following | For You */}
+        <div className="flex items-center gap-3 pointer-events-auto">
           <button
             onClick={() => setTab("following")}
-            className={cn(
-              "px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all",
-              tab === "following" ? "bg-white text-black" : "text-white/70 hover:text-white"
-            )}
+            className="relative flex flex-col items-center"
           >
-            Following
+            <span className={cn(
+              "text-[13px] font-semibold transition-colors leading-tight",
+              tab === "following" ? "text-white" : "text-white/45"
+            )}>
+              Following
+            </span>
+            {tab === "following" && (
+              <motion.div layoutId="tab-underline" className="mt-0.5 h-[2px] w-4 bg-white rounded-full" />
+            )}
           </button>
+          <div className="w-px h-3 bg-white/30" />
           <button
             onClick={() => setTab("foryou")}
-            className={cn(
-              "px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all",
-              tab === "foryou" ? "bg-white text-black" : "text-white/70 hover:text-white"
-            )}
+            className="relative flex flex-col items-center"
           >
-            For You
+            <span className={cn(
+              "text-[13px] font-semibold transition-colors leading-tight",
+              tab === "foryou" ? "text-white" : "text-white/45"
+            )}>
+              For You
+            </span>
+            {tab === "foryou" && (
+              <motion.div layoutId="tab-underline" className="mt-0.5 h-[2px] w-4 bg-white rounded-full" />
+            )}
           </button>
         </div>
 

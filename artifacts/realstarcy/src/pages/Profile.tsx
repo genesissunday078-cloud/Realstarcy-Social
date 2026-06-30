@@ -1,16 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  useGetUserProfile,
-  useListPosts,
-  useFollowUser,
-  useUnfollowUser,
-  useGetMe,
-  useUpdateMe,
-  getGetUserProfileQueryKey,
-  getListPostsQueryKey,
-  getGetMeQueryKey,
+  useGetUserProfile, useListPosts, useFollowUser, useUnfollowUser,
+  useGetMe, useUpdateMe,
+  getGetUserProfileQueryKey, getListPostsQueryKey, getGetMeQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import PostCard from "@/components/PostCard";
@@ -19,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Star, Pencil, X, Check } from "lucide-react";
+import { Star, Pencil, X, Check, Camera, Loader2 } from "lucide-react";
 
 export default function Profile() {
   const { username } = useParams<{ username: string }>();
@@ -29,6 +23,8 @@ export default function Profile() {
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState("");
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: user, isLoading: userLoading } = useGetUserProfile(username ?? "", {
     query: { enabled: !!username, queryKey: getGetUserProfileQueryKey(username ?? "") },
@@ -53,44 +49,38 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") });
         setSaved(true);
-        setTimeout(() => {
-          setSaved(false);
-          setEditOpen(false);
-        }, 1200);
+        setTimeout(() => { setSaved(false); setEditOpen(false); }, 1200);
       },
     },
   });
 
   const followMutation = useFollowUser({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") });
-      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") }),
     },
   });
-
   const unfollowMutation = useUnfollowUser({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") });
-      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") }),
     },
   });
 
   const isOwnProfile = me?.username === username;
 
-  const handleFollowToggle = () => {
-    if (!username) return;
-    if (user?.isFollowing) {
-      unfollowMutation.mutate({ username });
-    } else {
-      followMutation.mutate({ username });
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const data = await res.json() as { url: string };
+      setAvatar(data.url);
+    } catch { /* silent */ } finally {
+      setUploading(false);
     }
-  };
-
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateMe.mutate({ data: { displayName, bio, avatar } });
   };
 
   return (
@@ -105,27 +95,38 @@ export default function Profile() {
               <div className="flex gap-4">
                 <Skeleton className="h-3 w-16" />
                 <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-3 w-16" />
               </div>
             </div>
           </div>
         </div>
       ) : user ? (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           {/* Cover */}
           <div className="relative -mx-4 mb-6">
             <div className="h-28 bg-gradient-to-br from-primary/25 via-primary/8 to-background rounded-b-2xl" />
             <div className="absolute -bottom-10 left-4">
-              <Avatar className="w-20 h-20 border-4 border-background shadow-xl">
-                <AvatarImage src={editOpen ? avatar : user.avatar} alt={user.displayName} />
-                <AvatarFallback className="bg-primary/20 text-primary text-2xl font-serif">
-                  {user.displayName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-20 h-20 border-4 border-background shadow-xl">
+                  <AvatarImage src={editOpen ? avatar : user.avatar} alt={user.displayName} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-2xl font-serif">
+                    {user.displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                {isOwnProfile && editOpen && (
+                  <>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity hover:opacity-100"
+                    >
+                      {uploading
+                        ? <Loader2 size={20} className="text-white animate-spin" />
+                        : <Camera size={20} className="text-white" />
+                      }
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -140,7 +141,7 @@ export default function Profile() {
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setEditOpen(v => !v)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border hover:bg-secondary transition-colors"
               >
                 <Pencil size={14} />
                 Edit profile
@@ -149,7 +150,10 @@ export default function Profile() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={handleFollowToggle}
+                onClick={() => user.isFollowing
+                  ? unfollowMutation.mutate({ username: username! })
+                  : followMutation.mutate({ username: username! })
+                }
                 disabled={followMutation.isPending || unfollowMutation.isPending}
                 className={`px-5 py-2 rounded-lg text-sm font-bold transition-colors ${
                   user.isFollowing
@@ -166,7 +170,7 @@ export default function Profile() {
             <p className="text-sm text-foreground/80 leading-relaxed mt-3">{user.bio}</p>
           )}
 
-          {/* Stats row */}
+          {/* Stats */}
           <div className="flex items-center gap-6 mt-4 pt-4 border-t border-border/40">
             <div className="text-center">
               <p className="font-bold text-foreground text-base">{user.postCount.toLocaleString()}</p>
@@ -195,36 +199,29 @@ export default function Profile() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                onSubmit={handleSaveProfile}
+                onSubmit={e => { e.preventDefault(); updateMe.mutate({ data: { displayName, bio, avatar } }); }}
                 className="mt-5 bg-card border border-border rounded-xl p-5 space-y-4 overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between">
                   <h3 className="font-serif text-base">Edit profile</h3>
-                  <button
-                    type="button"
-                    onClick={() => setEditOpen(false)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <button type="button" onClick={() => setEditOpen(false)} className="text-muted-foreground hover:text-foreground">
                     <X size={18} />
                   </button>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <Avatar className="w-14 h-14 flex-shrink-0">
-                    <AvatarImage src={avatar} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-lg font-serif">
-                      {displayName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground mb-1.5 block">Avatar URL</Label>
-                    <Input
-                      value={avatar}
-                      onChange={e => setAvatar(e.target.value)}
-                      placeholder="https://..."
-                      className="bg-secondary border-border text-sm"
-                    />
-                  </div>
+                {/* Avatar upload hint */}
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Tap your photo above to change your profile picture, or paste a URL below.
+                </p>
+
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Avatar URL (optional)</Label>
+                  <Input
+                    value={avatar}
+                    onChange={e => setAvatar(e.target.value)}
+                    placeholder="https://..."
+                    className="bg-secondary border-border text-sm"
+                  />
                 </div>
 
                 <div>
@@ -251,14 +248,11 @@ export default function Profile() {
 
                 <motion.button
                   type="submit"
-                  whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.97 }}
                   disabled={updateMe.isPending || !displayName.trim()}
                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {saved ? (
-                    <><Check size={15} /> Saved!</>
-                  ) : updateMe.isPending ? "Saving…" : "Save changes"}
+                  {saved ? <><Check size={15} /> Saved!</> : updateMe.isPending ? "Saving…" : "Save changes"}
                 </motion.button>
               </motion.form>
             )}
@@ -273,22 +267,16 @@ export default function Profile() {
       {/* Posts */}
       {user && (
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-muted-foreground mb-4 font-semibold">
-            Moments
-          </h3>
+          <h3 className="text-xs uppercase tracking-widest text-muted-foreground mb-4 font-semibold">Moments</h3>
           <div className="flex flex-col gap-4">
             {postsLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="bg-card border border-card-border rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <Skeleton className="w-9 h-9 rounded-full" />
-                    <div className="flex-1">
-                      <Skeleton className="h-3 w-32 mb-1.5" />
-                      <Skeleton className="h-2.5 w-24" />
-                    </div>
+                    <div className="flex-1"><Skeleton className="h-3 w-32 mb-1.5" /><Skeleton className="h-2.5 w-24" /></div>
                   </div>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-full mb-2" /><Skeleton className="h-4 w-3/4" />
                 </div>
               ))
             ) : postsData?.posts.length === 0 ? (
@@ -299,12 +287,7 @@ export default function Profile() {
               </div>
             ) : (
               postsData?.posts.map((post, i) => (
-                <motion.div
-                  key={post.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
+                <motion.div key={post.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <PostCard post={post} />
                 </motion.div>
               ))

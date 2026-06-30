@@ -10,28 +10,22 @@ import PostDetail from "@/pages/PostDetail";
 import Profile from "@/pages/Profile";
 import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
+import CreatorEarnings from "@/pages/CreatorEarnings";
+import GoLive from "@/pages/GoLive";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 30_000,
-    },
+    queries: { retry: 1, staleTime: 30_000 },
   },
 });
 
 function Router() {
   return (
     <Switch>
-      {/* Login page — accessible but never forced */}
       <Route path="/login" component={Login} />
-
-      {/* Feed — full-screen, no sidebar layout */}
       <Route path="/" component={Feed} />
-
-      {/* All other pages use standard Layout */}
       <Route>
         <Layout>
           <Switch>
@@ -41,6 +35,8 @@ function Router() {
             <Route path="/profile/:username" component={Profile} />
             <Route path="/notifications" component={Notifications} />
             <Route path="/settings" component={Settings} />
+            <Route path="/creator-earnings" component={CreatorEarnings} />
+            <Route path="/go-live" component={GoLive} />
             <Route component={NotFound} />
           </Switch>
         </Layout>
@@ -49,7 +45,7 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -61,5 +57,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;
