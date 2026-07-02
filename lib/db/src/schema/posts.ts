@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -8,6 +8,7 @@ export const postsTable = pgTable("posts", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   content: text("content").notNull(),
   imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
   starCount: integer("star_count").notNull().default(0),
   commentCount: integer("comment_count").notNull().default(0),
   tags: text("tags").array().notNull().default([]),

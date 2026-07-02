@@ -37,6 +37,7 @@ export const GetFeedResponse = zod.object({
 }),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
   "starCount": zod.number(),
   "commentCount": zod.number(),
   "isStarred": zod.boolean(),
@@ -68,6 +69,7 @@ export const GetFollowingFeedResponse = zod.object({
 }),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
   "starCount": zod.number(),
   "commentCount": zod.number(),
   "isStarred": zod.boolean(),
@@ -94,6 +96,7 @@ export const GetTrendingResponse = zod.object({
 }),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
   "starCount": zod.number(),
   "commentCount": zod.number(),
   "isStarred": zod.boolean(),
@@ -139,6 +142,7 @@ export const ListPostsResponse = zod.object({
 }),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
   "starCount": zod.number(),
   "commentCount": zod.number(),
   "isStarred": zod.boolean(),
@@ -159,6 +163,7 @@ export const ListPostsResponse = zod.object({
 export const CreatePostBody = zod.object({
   "content": zod.string().min(1),
   "imageUrl": zod.string().optional(),
+  "videoUrl": zod.string().optional(),
   "tags": zod.array(zod.string()).optional()
 })
 
@@ -173,6 +178,7 @@ export const CreatePostResponse = zod.object({
 }),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
   "starCount": zod.number(),
   "commentCount": zod.number(),
   "isStarred": zod.boolean(),
@@ -199,6 +205,7 @@ export const GetPostResponse = zod.object({
 }),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "videoUrl": zod.string().nullish(),
   "starCount": zod.number(),
   "commentCount": zod.number(),
   "isStarred": zod.boolean(),

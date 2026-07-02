@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, MessageCircle, Share2, Bell, Settings,
-  Home, TrendingUp, PlusSquare, ChevronDown, Users,
+  Home, TrendingUp, PlusSquare, ChevronDown, Users, Volume2, VolumeX,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -32,12 +32,50 @@ function formatDate(dateStr: string) {
   return `${Math.floor(diff / 86400)}d`;
 }
 
+function VideoSlide({ src, isActive }: { src: string; isActive: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isActive) {
+      videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.pause();
+    }
+  }, [isActive]);
+
+  return (
+    <div className="absolute inset-0">
+      <video
+        ref={videoRef}
+        src={src}
+        className="w-full h-full object-cover"
+        loop
+        playsInline
+        muted={muted}
+        autoPlay={isActive}
+      />
+      <button
+        onClick={() => setMuted(m => !m)}
+        className="absolute top-16 right-3 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center z-10"
+      >
+        {muted
+          ? <VolumeX size={14} className="text-white" />
+          : <Volume2 size={14} className="text-white" />
+        }
+      </button>
+    </div>
+  );
+}
+
 interface SlideProps {
   post: Post;
   index: number;
+  isActive: boolean;
 }
 
-function PostSlide({ post, index }: SlideProps) {
+function PostSlide({ post, index, isActive }: SlideProps) {
   const queryClient = useQueryClient();
   const [isStarred, setIsStarred] = useState(post.isStarred);
   const [starCount, setStarCount] = useState(post.starCount);
@@ -92,8 +130,10 @@ function PostSlide({ post, index }: SlideProps) {
 
   return (
     <div className="relative w-full flex-shrink-0" style={{ height: "100dvh" }}>
-      {/* Background */}
-      {post.imageUrl ? (
+      {/* Background — video takes priority */}
+      {post.videoUrl ? (
+        <VideoSlide src={post.videoUrl} isActive={isActive} />
+      ) : post.imageUrl ? (
         <img
           src={post.imageUrl}
           alt="post"
@@ -105,7 +145,7 @@ function PostSlide({ post, index }: SlideProps) {
       )}
 
       {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/40" />
 
       {/* Right action bar */}
       <div className="absolute right-3 bottom-28 flex flex-col items-center gap-5 z-20">
@@ -311,14 +351,34 @@ function BottomNav() {
 
 export default function Feed() {
   const [tab, setTab] = useState<"foryou" | "following">("foryou");
+  const [activeIndex, setActiveIndex] = useState(0);
   const { data: forYouData, isLoading: forYouLoading } = useGetFeed({ limit: 20 });
   const { data: followingData, isLoading: followingLoading } = useGetFollowingFeed({ limit: 20 });
   const { data: me } = useGetMe();
   const { data: notifications } = useGetNotifications();
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const posts = tab === "foryou" ? (forYouData?.posts ?? []) : (followingData?.posts ?? []);
   const isLoading = tab === "foryou" ? forYouLoading : followingLoading;
+
+  // Track active slide via scroll
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const idx = Math.round(el.scrollTop / el.clientHeight);
+      setActiveIndex(idx);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [posts]);
+
+  // Reset active index when tab changes
+  useEffect(() => {
+    setActiveIndex(0);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [tab]);
 
   return (
     <div className="relative w-full bg-black" style={{ height: "100dvh" }}>
@@ -330,12 +390,9 @@ export default function Feed() {
           </Link>
         </div>
 
-        {/* Tabs — TikTok style: Following | For You */}
+        {/* Tabs — Following | For You */}
         <div className="flex items-center gap-3 pointer-events-auto">
-          <button
-            onClick={() => setTab("following")}
-            className="relative flex flex-col items-center"
-          >
+          <button onClick={() => setTab("following")} className="relative flex flex-col items-center">
             <span className={cn(
               "text-[13px] font-semibold transition-colors leading-tight",
               tab === "following" ? "text-white" : "text-white/45"
@@ -347,10 +404,7 @@ export default function Feed() {
             )}
           </button>
           <div className="w-px h-3 bg-white/30" />
-          <button
-            onClick={() => setTab("foryou")}
-            className="relative flex flex-col items-center"
-          >
+          <button onClick={() => setTab("foryou")} className="relative flex flex-col items-center">
             <span className={cn(
               "text-[13px] font-semibold transition-colors leading-tight",
               tab === "foryou" ? "text-white" : "text-white/45"
@@ -405,11 +459,7 @@ export default function Feed() {
                 <p className="font-serif text-2xl text-white mb-2">Quiet here.</p>
                 <p className="text-white/60 text-sm mb-6">Be the first to share something real.</p>
                 <Link href="/create">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="bg-primary text-black px-6 py-3 rounded-xl text-sm font-bold"
-                  >
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-black px-6 py-3 rounded-xl text-sm font-bold">
                     Share a moment
                   </motion.button>
                 </Link>
@@ -417,12 +467,13 @@ export default function Feed() {
             </div>
           ) : (
             <div
+              ref={scrollRef}
               className="h-full overflow-y-scroll"
               style={{ scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch" }}
             >
               {posts.map((post, i) => (
                 <div key={post.id} style={{ scrollSnapAlign: "start" }}>
-                  <PostSlide post={post} index={i} />
+                  <PostSlide post={post} index={i} isActive={i === activeIndex} />
                 </div>
               ))}
               {posts.length > 1 && (

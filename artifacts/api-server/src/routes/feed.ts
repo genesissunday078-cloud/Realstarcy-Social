@@ -23,6 +23,7 @@ async function formatPost(post: typeof postsTable.$inferSelect, currentUserId: n
     } : { id: 0, username: "unknown", displayName: "Unknown", avatar: "" },
     content: post.content,
     imageUrl: post.imageUrl ?? null,
+    videoUrl: post.videoUrl ?? null,
     starCount: post.starCount,
     commentCount: post.commentCount,
     isStarred: starred.length > 0,

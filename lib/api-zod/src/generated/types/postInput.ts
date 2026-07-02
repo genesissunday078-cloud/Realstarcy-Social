@@ -10,5 +10,6 @@ export interface PostInput {
   /** @minLength 1 */
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   tags?: string[];
 }

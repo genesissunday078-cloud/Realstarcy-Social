@@ -458,6 +458,8 @@ components:
           type: string
         imageUrl:
           type: ["string", "null"]
+        videoUrl:
+          type: ["string", "null"]
         starCount:
           type: integer
         commentCount:
@@ -479,6 +481,8 @@ components:
           type: string
           minLength: 1
         imageUrl:
+          type: string
+        videoUrl:
           type: string
         tags:
           type: array

@@ -14,6 +14,8 @@ export interface Post {
   content: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  videoUrl?: string | null;
   starCount: number;
   commentCount: number;
   isStarred: boolean;

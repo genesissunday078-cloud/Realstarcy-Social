@@ -13,19 +13,19 @@ if (!fs.existsSync(uploadsDir)) {
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const ext = path.extname(file.originalname).toLowerCase() || ".bin";
     cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
+    if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed"));
+      cb(new Error("Only image or video files are allowed"));
     }
   },
 });
@@ -36,7 +36,8 @@ router.post("/upload", upload.single("file"), (req, res) => {
     return;
   }
   const url = `/api/uploads/${req.file.filename}`;
-  res.json({ url });
+  const isVideo = req.file.mimetype.startsWith("video/");
+  res.json({ url, type: isVideo ? "video" : "image" });
 });
 
 export default router;

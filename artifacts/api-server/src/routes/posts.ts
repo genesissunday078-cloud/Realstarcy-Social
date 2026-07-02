@@ -49,12 +49,13 @@ router.post("/posts", async (req, res) => {
     return;
   }
 
-  const { content, imageUrl, tags } = parsed.data;
+  const { content, imageUrl, videoUrl, tags } = parsed.data;
 
   const [post] = await db.insert(postsTable).values({
     userId: currentUserId,
     content,
     imageUrl: imageUrl ?? null,
+    videoUrl: videoUrl ?? null,
     tags: tags ?? [],
   }).returning();
 
