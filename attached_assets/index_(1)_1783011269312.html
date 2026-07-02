@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realstarcy V5</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto}
+  body{background:#000;color:#fff;overflow:hidden}
+  header{position:fixed;top:0;width:100%;background:#000;z-index:100;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222}
+ .logo{font-size:20px;font-weight:800;cursor:pointer} /* Clickable -> Ads page later */
+ .tabs{display:flex;gap:24px;font-size:16px;font-weight:600}
+ .tabs span{opacity:.6;cursor:pointer;padding-bottom:4px}
+ .tabs.active{opacity:1;border-bottom:2px solid #fff}
+ .search{font-size:20px;cursor:pointer}
+ .feed{height:100vh;padding-top:56px;overflow-y:scroll;scroll-snap-type:y mandatory}
+ .post{height:100vh;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;background:#111;position:relative}
+ .post video{width:100%;height:100%;object-fit:cover;filter:none}
+ .actions{position:absolute;right:12px;bottom:120px;display:flex;flex-direction:column;gap:20px;text-align:center;font-size:24px}
+ .postBtn{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:#ff0050;border:0;color:#fff;font-size:28px;z-index:100}
+ .cameraModal{display:none;position:fixed;inset:0;background:#000;z-index:200;flex-direction:column}
+ .cameraModal video{flex:1;width:100%;object-fit:cover}
+ .filters{position:absolute;bottom:140px;width:100%;overflow-x:auto;white-space:nowrap;padding:8px 12px;display:flex;gap:12px} /* Bottom slider */
+ .filterChip{flex:0 0 auto;padding:8px 14px;background:#222;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid #333}
+ .filterChip.active{background:#ff0050;border-color:#ff0050}
+ .templates{position:absolute;bottom:80px;width:100%;overflow-x:auto;white-space:nowrap;padding:8px 12px;display:flex;gap:12px}
+ .tplChip{flex:0 0 auto;padding:8px 14px;background:#1a1a1a;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid #333}
+ .tplChip.active{background:#00f2ea;border-color:#00f2ea;color:#000}
+ .camBar{position:absolute;bottom:12px;width:100%;display:flex;justify-content:center;gap:20px}
+ .camBtn{width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid #ff0050}
+ .closeCam{position:absolute;top:12px;left:12px;font-size:24px;background:#222;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+ .postBtnCam{position:absolute;bottom:12px;right:20px;padding:12px 20px;background:#ff0050;border:0;border-radius:24px;color:#fff;font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="alert('Ad/Product Hub opens here. No ads in feed ✅')">Realstarcy</div>
+  <div class="tabs"><span class="active">For You</span><span>Following</span></div>
+  <div class="search" onclick="alert('Search: Users, Tags, Sounds coming in V5.1')">🔍</div>
+</header>
+
+<div class="feed" id="feed">
+  <div class="post"><video src="https://videos.pexels.com/video-files/3209948/3209948-hd_1080_1920_25fps.mp4" autoplay muted loop playsinline></video>
+    <div class="actions"><div>⭐<br>12K</div><div>💬<br>340</div><div>↗️<br>Share</div></div>
+  </div>
+  <div class="post"><video src="https://videos.pexels.com/video-files/2795386/2795386-uhd_1440_1440_25fps.mp4" autoplay muted loop playsinline></video>
+    <div class="actions"><div>⭐<br>8K</div><div>💬<br>120</div><div>↗️<br>Share</div></div>
+  </div>
+</div>
+
+<button class="postBtn" onclick="openCam()">+</button>
+
+<div class="cameraModal" id="cam">
+  <video id="preview" autoplay playsinline></video>
+  <div class="closeCam" onclick="closeCam()">×</div>
+
+  <div class="filters" id="filterSlider"></div> <!-- 25 Filters Bottom Slider -->
+
+  <div class="templates" id="tplSlider"></div> <!-- 20 Templates -->
+
+  <div class="camBar"><button class="camBtn" id="recordBtn"></button></div>
+  <button class="postBtnCam" onclick="postVideo()">Post</button>
+</div>
+
+<script>
+const FILTERS = [
+  'None','Dawn','Street','Real','B&W','Warm','VHS','Grain','Neon','90s','Dubai','Tokyo','Miami',
+  'Film','Soft','Sharp','Cool','Vintage','Noir','Retro','Aesthetic','Blur','Glow','Contrast','Pop'
+];
+const FILTER_CSS = {
+  'None':'','Dawn':'sepia(.3) brightness(1.1)','Street':'contrast(1.3) saturate(1.2)',
+  'Real':'','B&W':'grayscale(1) contrast(1.1)','Warm':'sepia(.5) hue-rotate(-10deg)',
+  'VHS':'contrast(1.2) brightness(1.1) sepia(.2)','Grain':'contrast(1.1)','Neon':'saturate(2) hue-rotate(20deg)',
+  '90s':'sepia(.4) brightness(.95)','Dubai':'brightness(1.2) saturate(1.3)','Tokyo':'hue-rotate(30deg) saturate(1.4)',
+  'Miami':'saturate(1.5) brightness(1.1)','Film':'sepia(.2) contrast(1.1)','Soft':'blur(.3px) brightness(1.05)',
+  'Sharp':'contrast(1.4)','Cool':'hue-rotate(200deg)','Vintage':'sepia(.6)','Noir':'grayscale(1) contrast(1.5)',
+  'Retro':'sepia(.3) hue-rotate(-20deg)','Aesthetic':'saturate(1.3) brightness(1.05)','Blur':'blur(.5px)',
+  'Glow':'brightness(1.2) contrast(.9)','Contrast':'contrast(1.6)','Pop':'saturate(1.8) contrast(1.2)'
+};
+
+const TEMPLATES = Array.from({length:20}, (_,i)=>`Template ${i+1}`); // 20 Templates
+const TPL_CSS = {
+  'Template 1':'transform:scale(1.05)','Template 2':'transform:scale(.95)','Template 3':'transform:rotate(1deg)',
+  'Template 4':'transform:rotate(-1deg)','Template 5':'animation:zoom 3s infinite alternate',
+  'Template 6':'filter:hue-rotate(180deg)','Template 7':'mix-blend-mode:screen','Template 8':'filter:invert(.1)',
+  'Template 9':'clip-path:circle(50%)','Template 10':'border-radius:20px',
+  'Template 11':'transform:skewX(2deg)','Template 12':'transform:skewY(2deg)','Template 13':'filter:brightness(1.3)',
+  'Template 14':'filter:contrast(1.5)','Template 15':'filter:saturate(.5)','Template 16':'filter:sepia(1)',
+  'Template 17':'opacity:.9','Template 18':'transform:scaleX(1.02)','Template 19':'transform:scaleY(1.02)',
+  'Template 20':'box-shadow:inset 0 0 50px rgba(255,0,80,.3)'
+};
+document.head.insertAdjacentHTML('beforeend', `<style>@keyframes zoom{0%{transform:scale(1)}100%{transform:scale(1.1)}}</style>`);
+
+let stream, recorder, chunks=[], activeFilter='', activeTpl='';
+
+FILTERS.forEach(f=>{
+  filterSlider.innerHTML+=`<div class="filterChip" onclick="applyFilter('${f}',this)">${f}</div>`;
+});
+TEMPLATES.forEach(t=>{
+  tplSlider.innerHTML+=`<div class="tplChip" onclick="applyTpl('${t}',this)">${t}</div>`;
+});
+
+function applyFilter(name,el){
+  document.querySelectorAll('.filterChip').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter=name;
+  preview.style.filter = FILTER_CSS[name] + ' + (TPL_CSS[activeTpl]||'');
+}
+function applyTpl(name,el){
+  document.querySelectorAll('.tplChip').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  activeTpl=name;
+  preview.style.filter = FILTER_CSS[activeFilter] + ' ' + (TPL_CSS[name]||'');
+}
+
+async function openCam(){
+  cam.style.display='flex';
+  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:1080},audio:true});
+  preview.srcObject=stream;
+  recordBtn.onclick=toggleRec;
+}
+function closeCam(){
+  cam.style.display='none';
+  stream.getTracks().forEach(t=>t.stop());
+}
+function toggleRec(){
+  if(recorder && recorder.state==='recording'){
+    recorder.stop(); recordBtn.style.background='#fff';
+  }else{
+    chunks=[]; recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp9'});
+    recorder.ondataavailable=e=>chunks.push(e.data);
+    recorder.onstop=()=>{const blob=new Blob(chunks,{type:'video/webm'}); preview.src=URL.createObjectURL(blob); preview.srcObject=null; preview.controls=true; preview.loop=false; preview.muted=false;}
+    recorder.start(); recordBtn.style.background='#ff0050';
+  }
+}
+function postVideo(){
+  alert('Posted! V5.1 go connect to Supabase to save am for real ✅');
+  closeCam();
+}
+</script>
+</body>
+</html>
