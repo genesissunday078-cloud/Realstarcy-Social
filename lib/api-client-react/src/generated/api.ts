@@ -27,12 +27,12 @@ import type {
   GetFollowingFeedParams,
   HealthStatus,
   ListPostsParams,
+  LoveResult,
   Notification,
   PlatformStats,
   Post,
   PostFeed,
   PostInput,
-  StarResult,
   SuccessResponse,
   TrendingData,
   User,
@@ -767,20 +767,20 @@ export const useDeletePost = <TError = ErrorType<unknown>,
       return useMutation(getDeletePostMutationOptions(options));
     }
 
-export const getStarPostUrl = (id: number,) => {
+export const getLovePostUrl = (id: number,) => {
 
 
 
 
-  return `/api/posts/${id}/star`
+  return `/api/posts/${id}/love`
 }
 
 /**
- * @summary Star a post
+ * @summary Love a post
  */
-export const starPost = async (id: number, options?: RequestInit): Promise<StarResult> => {
+export const lovePost = async (id: number, options?: RequestInit): Promise<LoveResult> => {
 
-  return customFetch<StarResult>(getStarPostUrl(id),
+  return customFetch<LoveResult>(getLovePostUrl(id),
   {
     ...options,
     method: 'POST'
@@ -792,11 +792,11 @@ export const starPost = async (id: number, options?: RequestInit): Promise<StarR
 
 
 
-export const getStarPostMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof starPost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof starPost>>, TError,{id: number}, TContext> => {
+export const getLovePostMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lovePost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof lovePost>>, TError,{id: number}, TContext> => {
 
-const mutationKey = ['starPost'];
+const mutationKey = ['lovePost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -806,10 +806,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof starPost>>, {id: number}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lovePost>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  starPost(id,requestOptions)
+          return  lovePost(id,requestOptions)
         }
 
 
@@ -819,38 +819,38 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type StarPostMutationResult = NonNullable<Awaited<ReturnType<typeof starPost>>>
+    export type LovePostMutationResult = NonNullable<Awaited<ReturnType<typeof lovePost>>>
 
-    export type StarPostMutationError = ErrorType<unknown>
+    export type LovePostMutationError = ErrorType<unknown>
 
     /**
- * @summary Star a post
+ * @summary Love a post
  */
-export const useStarPost = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof starPost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useLovePost = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lovePost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof starPost>>,
+        Awaited<ReturnType<typeof lovePost>>,
         TError,
         {id: number},
         TContext
       > => {
-      return useMutation(getStarPostMutationOptions(options));
+      return useMutation(getLovePostMutationOptions(options));
     }
 
-export const getUnstarPostUrl = (id: number,) => {
+export const getUnlovePostUrl = (id: number,) => {
 
 
 
 
-  return `/api/posts/${id}/star`
+  return `/api/posts/${id}/love`
 }
 
 /**
- * @summary Unstar a post
+ * @summary Unlove a post
  */
-export const unstarPost = async (id: number, options?: RequestInit): Promise<StarResult> => {
+export const unlovePost = async (id: number, options?: RequestInit): Promise<LoveResult> => {
 
-  return customFetch<StarResult>(getUnstarPostUrl(id),
+  return customFetch<LoveResult>(getUnlovePostUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -862,11 +862,11 @@ export const unstarPost = async (id: number, options?: RequestInit): Promise<Sta
 
 
 
-export const getUnstarPostMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unstarPost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof unstarPost>>, TError,{id: number}, TContext> => {
+export const getUnlovePostMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlovePost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlovePost>>, TError,{id: number}, TContext> => {
 
-const mutationKey = ['unstarPost'];
+const mutationKey = ['unlovePost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -876,10 +876,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unstarPost>>, {id: number}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlovePost>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  unstarPost(id,requestOptions)
+          return  unlovePost(id,requestOptions)
         }
 
 
@@ -889,22 +889,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UnstarPostMutationResult = NonNullable<Awaited<ReturnType<typeof unstarPost>>>
+    export type UnlovePostMutationResult = NonNullable<Awaited<ReturnType<typeof unlovePost>>>
 
-    export type UnstarPostMutationError = ErrorType<unknown>
+    export type UnlovePostMutationError = ErrorType<unknown>
 
     /**
- * @summary Unstar a post
+ * @summary Unlove a post
  */
-export const useUnstarPost = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unstarPost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useUnlovePost = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlovePost>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof unstarPost>>,
+        Awaited<ReturnType<typeof unlovePost>>,
         TError,
         {id: number},
         TContext
       > => {
-      return useMutation(getUnstarPostMutationOptions(options));
+      return useMutation(getUnlovePostMutationOptions(options));
     }
 
 export const getGetCommentsUrl = (id: number,) => {

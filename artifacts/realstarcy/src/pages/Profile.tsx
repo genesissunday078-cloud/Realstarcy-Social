@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Star, Pencil, X, Check, Camera, Loader2 } from "lucide-react";
+import { Heart, Pencil, X, Check, Camera, Loader2 } from "lucide-react";
 
 export default function Profile() {
   const { username } = useParams<{ username: string }>();
@@ -185,9 +185,9 @@ export default function Profile() {
               <p className="text-xs text-muted-foreground">Following</p>
             </div>
             <div className="flex items-center gap-1.5 ml-auto text-sm">
-              <Star size={14} className="text-primary" />
-              <span className="font-semibold">{user.starCount.toLocaleString()}</span>
-              <span className="text-muted-foreground text-xs">stars</span>
+              <Heart size={14} className="text-primary" />
+              <span className="font-semibold">{user.loveCount.toLocaleString()}</span>
+              <span className="text-muted-foreground text-xs">loves</span>
             </div>
           </div>
 

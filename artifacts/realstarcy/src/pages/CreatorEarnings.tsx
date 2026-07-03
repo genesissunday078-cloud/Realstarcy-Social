@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useGetMe, useListPosts } from "@workspace/api-client-react";
-import { DollarSign, Star, Eye, TrendingUp, Users, Heart } from "lucide-react";
+import { DollarSign, Eye, TrendingUp, Users, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function StatCard({ label, value, sub, icon, highlight }: {
@@ -52,9 +52,9 @@ export default function CreatorEarnings() {
     { query: { enabled: !!me?.id, queryKey: ["listPosts", me?.id] } }
   );
 
-  const totalStars = me?.starCount ?? 0;
+  const totalLoves = me?.loveCount ?? 0;
   const totalPosts = me?.postCount ?? 0;
-  const estimatedViews = totalStars * 12;
+  const estimatedViews = totalLoves * 12;
   const estimatedEarnings = Math.floor(estimatedViews / 5000);
   const nextMilestone = Math.ceil(estimatedViews / 5000) * 5000;
   const viewsToNext = nextMilestone - estimatedViews;
@@ -106,10 +106,10 @@ export default function CreatorEarnings() {
       <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3 font-semibold">Your stats</p>
       <div className="grid grid-cols-2 gap-3 mb-6">
         <StatCard
-          label="Stars received"
-          value={totalStars.toLocaleString()}
+          label="Loves received"
+          value={totalLoves.toLocaleString()}
           sub="Engagement signal"
-          icon={<Star size={14} className="text-primary" />}
+          icon={<Heart size={14} className="text-primary" />}
         />
         <StatCard
           label="Est. views"

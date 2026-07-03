@@ -16,7 +16,7 @@ export interface User {
   avatar: string;
   bio: string;
   postCount: number;
-  starCount: number;
+  loveCount: number;
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;
@@ -45,9 +45,9 @@ export interface Post {
   imageUrl?: string | null;
   /** @nullable */
   videoUrl?: string | null;
-  starCount: number;
+  loveCount: number;
   commentCount: number;
-  isStarred: boolean;
+  isLoved: boolean;
   tags: string[];
   createdAt: string;
 }
@@ -84,7 +84,7 @@ export type NotificationType = typeof NotificationType[keyof typeof Notification
 
 
 export const NotificationType = {
-  star: 'star',
+  love: 'love',
   comment: 'comment',
   follow: 'follow',
   mention: 'mention',
@@ -102,9 +102,9 @@ export interface Notification {
   createdAt: string;
 }
 
-export interface StarResult {
-  starCount: number;
-  isStarred: boolean;
+export interface LoveResult {
+  loveCount: number;
+  isLoved: boolean;
 }
 
 export interface FollowResult {
@@ -124,7 +124,7 @@ export interface TrendingData {
 export interface PlatformStats {
   totalPosts: number;
   totalUsers: number;
-  totalStars: number;
+  totalLoves: number;
   newPostsToday: number;
 }
 

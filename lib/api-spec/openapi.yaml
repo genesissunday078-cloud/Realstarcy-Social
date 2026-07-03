@@ -182,11 +182,11 @@ paths:
         "204":
           description: Deleted
 
-  /posts/{id}/star:
+  /posts/{id}/love:
     post:
-      operationId: starPost
+      operationId: lovePost
       tags: [posts]
-      summary: Star a post
+      summary: Love a post
       parameters:
         - name: id
           in: path
@@ -195,15 +195,15 @@ paths:
             type: integer
       responses:
         "200":
-          description: Updated star count
+          description: Updated love count
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StarResult"
+                $ref: "#/components/schemas/LoveResult"
     delete:
-      operationId: unstarPost
+      operationId: unlovePost
       tags: [posts]
-      summary: Unstar a post
+      summary: Unlove a post
       parameters:
         - name: id
           in: path
@@ -212,11 +212,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Updated star count
+          description: Updated love count
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StarResult"
+                $ref: "#/components/schemas/LoveResult"
 
   /posts/{id}/comments:
     get:
@@ -409,7 +409,7 @@ components:
 
     User:
       type: object
-      required: [id, username, displayName, avatar, bio, postCount, starCount, followerCount, followingCount, isFollowing, createdAt]
+      required: [id, username, displayName, avatar, bio, postCount, loveCount, followerCount, followingCount, isFollowing, createdAt]
       properties:
         id:
           type: integer
@@ -423,7 +423,7 @@ components:
           type: string
         postCount:
           type: integer
-        starCount:
+        loveCount:
           type: integer
         followerCount:
           type: integer
@@ -446,7 +446,7 @@ components:
 
     Post:
       type: object
-      required: [id, userId, author, content, starCount, commentCount, isStarred, tags, createdAt]
+      required: [id, userId, author, content, loveCount, commentCount, isLoved, tags, createdAt]
       properties:
         id:
           type: integer
@@ -460,11 +460,11 @@ components:
           type: ["string", "null"]
         videoUrl:
           type: ["string", "null"]
-        starCount:
+        loveCount:
           type: integer
         commentCount:
           type: integer
-        isStarred:
+        isLoved:
           type: boolean
         tags:
           type: array
@@ -546,7 +546,7 @@ components:
           type: integer
         type:
           type: string
-          enum: [star, comment, follow, mention]
+          enum: [love, comment, follow, mention]
         fromUser:
           $ref: "#/components/schemas/UserSummary"
         postId:
@@ -558,13 +558,13 @@ components:
         createdAt:
           type: string
 
-    StarResult:
+    LoveResult:
       type: object
-      required: [starCount, isStarred]
+      required: [loveCount, isLoved]
       properties:
-        starCount:
+        loveCount:
           type: integer
-        isStarred:
+        isLoved:
           type: boolean
 
     FollowResult:
@@ -598,13 +598,13 @@ components:
 
     PlatformStats:
       type: object
-      required: [totalPosts, totalUsers, totalStars, newPostsToday]
+      required: [totalPosts, totalUsers, totalLoves, newPostsToday]
       properties:
         totalPosts:
           type: integer
         totalUsers:
           type: integer
-        totalStars:
+        totalLoves:
           type: integer
         newPostsToday:
           type: integer

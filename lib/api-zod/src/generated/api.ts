@@ -38,9 +38,9 @@ export const GetFeedResponse = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "commentCount": zod.number(),
-  "isStarred": zod.boolean(),
+  "isLoved": zod.boolean(),
   "tags": zod.array(zod.string()),
   "createdAt": zod.string()
 })),
@@ -70,9 +70,9 @@ export const GetFollowingFeedResponse = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "commentCount": zod.number(),
-  "isStarred": zod.boolean(),
+  "isLoved": zod.boolean(),
   "tags": zod.array(zod.string()),
   "createdAt": zod.string()
 })),
@@ -97,9 +97,9 @@ export const GetTrendingResponse = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "commentCount": zod.number(),
-  "isStarred": zod.boolean(),
+  "isLoved": zod.boolean(),
   "tags": zod.array(zod.string()),
   "createdAt": zod.string()
 })),
@@ -116,7 +116,7 @@ export const GetTrendingResponse = zod.object({
 export const GetPlatformStatsResponse = zod.object({
   "totalPosts": zod.number(),
   "totalUsers": zod.number(),
-  "totalStars": zod.number(),
+  "totalLoves": zod.number(),
   "newPostsToday": zod.number()
 })
 
@@ -143,9 +143,9 @@ export const ListPostsResponse = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "commentCount": zod.number(),
-  "isStarred": zod.boolean(),
+  "isLoved": zod.boolean(),
   "tags": zod.array(zod.string()),
   "createdAt": zod.string()
 })),
@@ -179,9 +179,9 @@ export const CreatePostResponse = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "commentCount": zod.number(),
-  "isStarred": zod.boolean(),
+  "isLoved": zod.boolean(),
   "tags": zod.array(zod.string()),
   "createdAt": zod.string()
 })
@@ -206,9 +206,9 @@ export const GetPostResponse = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "commentCount": zod.number(),
-  "isStarred": zod.boolean(),
+  "isLoved": zod.boolean(),
   "tags": zod.array(zod.string()),
   "createdAt": zod.string()
 })
@@ -225,28 +225,28 @@ export const DeletePostResponse = zod.void()
 
 
 /**
- * @summary Star a post
+ * @summary Love a post
  */
-export const StarPostParams = zod.object({
+export const LovePostParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const StarPostResponse = zod.object({
-  "starCount": zod.number(),
-  "isStarred": zod.boolean()
+export const LovePostResponse = zod.object({
+  "loveCount": zod.number(),
+  "isLoved": zod.boolean()
 })
 
 
 /**
- * @summary Unstar a post
+ * @summary Unlove a post
  */
-export const UnstarPostParams = zod.object({
+export const UnlovePostParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const UnstarPostResponse = zod.object({
-  "starCount": zod.number(),
-  "isStarred": zod.boolean()
+export const UnlovePostResponse = zod.object({
+  "loveCount": zod.number(),
+  "isLoved": zod.boolean()
 })
 
 
@@ -321,7 +321,7 @@ export const GetMeResponse = zod.object({
   "avatar": zod.string(),
   "bio": zod.string(),
   "postCount": zod.number(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "followerCount": zod.number(),
   "followingCount": zod.number(),
   "isFollowing": zod.boolean(),
@@ -345,7 +345,7 @@ export const UpdateMeResponse = zod.object({
   "avatar": zod.string(),
   "bio": zod.string(),
   "postCount": zod.number(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "followerCount": zod.number(),
   "followingCount": zod.number(),
   "isFollowing": zod.boolean(),
@@ -367,7 +367,7 @@ export const GetUserProfileResponse = zod.object({
   "avatar": zod.string(),
   "bio": zod.string(),
   "postCount": zod.number(),
-  "starCount": zod.number(),
+  "loveCount": zod.number(),
   "followerCount": zod.number(),
   "followingCount": zod.number(),
   "isFollowing": zod.boolean(),
@@ -404,7 +404,7 @@ export const UnfollowUserResponse = zod.object({
  */
 export const GetNotificationsResponseItem = zod.object({
   "id": zod.number(),
-  "type": zod.enum(['star', 'comment', 'follow', 'mention']),
+  "type": zod.enum(['love', 'comment', 'follow', 'mention']),
   "fromUser": zod.object({
   "id": zod.number(),
   "username": zod.string(),

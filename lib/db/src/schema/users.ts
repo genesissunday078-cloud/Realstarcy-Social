@@ -9,7 +9,7 @@ export const usersTable = pgTable("users", {
   avatar: text("avatar").notNull(),
   bio: text("bio").notNull().default(""),
   postCount: integer("post_count").notNull().default(0),
-  starCount: integer("star_count").notNull().default(0),
+  loveCount: integer("love_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -20,7 +20,7 @@ export const followsTable = pgTable("follows", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, postCount: true, starCount: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, postCount: true, loveCount: true, createdAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
 export type Follow = typeof followsTable.$inferSelect;

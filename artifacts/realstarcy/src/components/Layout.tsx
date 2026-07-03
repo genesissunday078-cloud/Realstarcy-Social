@@ -31,7 +31,7 @@ export default function Layout({ children }: LayoutProps) {
         <Link href="/">
           <div className="mb-12 cursor-pointer">
             <h1 className="font-serif text-2xl text-primary tracking-tight">Realstarcy</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Real moments. Starred.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Real moments. Loved.</p>
           </div>
         </Link>
 

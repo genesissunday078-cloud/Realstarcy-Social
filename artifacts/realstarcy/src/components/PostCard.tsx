@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, MessageCircle, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
-  useStarPost,
-  useUnstarPost,
+  useLovePost,
+  useUnlovePost,
   useGetMe,
   getGetFeedQueryKey,
   getListPostsQueryKey,
@@ -37,32 +37,35 @@ function formatDate(dateStr: string) {
 export default function PostCard({ post, showActions = true }: PostCardProps) {
   const queryClient = useQueryClient();
   const { data: me } = useGetMe();
-  const [isStarred, setIsStarred] = useState(post.isStarred);
-  const [starCount, setStarCount] = useState(post.starCount);
-  const [starBurst, setStarBurst] = useState(false);
+  const [isLoved, setIsLoved] = useState(post.isLoved);
+  const [loveCount, setLoveCount] = useState(post.loveCount);
+  const [loveBurst, setLoveBurst] = useState(false);
+  const [bigHeart, setBigHeart] = useState(false);
+  const lastTapRef = useRef(0);
 
-  const starMutation = useStarPost({
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetPostQueryKey(post.id) });
+    queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+  };
+
+  const loveMutation = useLovePost({
     mutation: {
       onSuccess: (data) => {
-        setStarCount(data.starCount);
-        setIsStarred(data.isStarred);
-        queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetPostQueryKey(post.id) });
-        queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+        setLoveCount(data.loveCount);
+        setIsLoved(data.isLoved);
+        invalidate();
       },
     },
   });
 
-  const unstarMutation = useUnstarPost({
+  const unloveMutation = useUnlovePost({
     mutation: {
       onSuccess: (data) => {
-        setStarCount(data.starCount);
-        setIsStarred(data.isStarred);
-        queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetPostQueryKey(post.id) });
-        queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+        setLoveCount(data.loveCount);
+        setIsLoved(data.isLoved);
+        invalidate();
       },
     },
   });
@@ -77,15 +80,32 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
     },
   });
 
-  const handleStar = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isStarred) {
-      unstarMutation.mutate({ id: post.id });
-    } else {
-      setStarBurst(true);
-      setTimeout(() => setStarBurst(false), 600);
-      starMutation.mutate({ id: post.id });
+  const doLove = () => {
+    if (!isLoved) {
+      setLoveBurst(true);
+      setTimeout(() => setLoveBurst(false), 600);
+      loveMutation.mutate({ id: post.id });
     }
+  };
+
+  const handleLoveButton = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isLoved) {
+      unloveMutation.mutate({ id: post.id });
+    } else {
+      doLove();
+    }
+  };
+
+  const handleContentTap = (e: React.MouseEvent) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      e.preventDefault();
+      doLove();
+      setBigHeart(true);
+      setTimeout(() => setBigHeart(false), 800);
+    }
+    lastTapRef.current = now;
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -132,22 +152,39 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
         )}
       </div>
 
-      {/* Content */}
-      <Link href={`/post/${post.id}`}>
-        <div className="cursor-pointer">
-          <p className="text-sm leading-relaxed text-foreground/90 mb-3">{post.content}</p>
-          {post.imageUrl && (
-            <div className="rounded-lg overflow-hidden mb-3 aspect-video bg-secondary">
-              <img
-                src={post.imageUrl}
-                alt="Post"
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </div>
+      {/* Content — double-tap/double-click to love */}
+      <div className="relative cursor-pointer" onClick={handleContentTap}>
+        <Link href={`/post/${post.id}`} onClick={(e) => { if (Date.now() - lastTapRef.current < 20) e.preventDefault(); }}>
+          <div>
+            <p className="text-sm leading-relaxed text-foreground/90 mb-3">{post.content}</p>
+            {post.imageUrl && (
+              <div className="rounded-lg overflow-hidden mb-3 aspect-video bg-secondary">
+                <img
+                  src={post.imageUrl}
+                  alt="Post"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )}
+          </div>
+        </Link>
+
+        <AnimatePresence>
+          {bigHeart && (
+            <motion.div
+              key="big-heart"
+              initial={{ scale: 0, opacity: 0.9 }}
+              animate={{ scale: 1.3, opacity: 1 }}
+              exit={{ scale: 1.6, opacity: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+            >
+              <Heart size={80} fill="#f5a623" stroke="#f5a623" className="drop-shadow-lg" />
+            </motion.div>
           )}
-        </div>
-      </Link>
+        </AnimatePresence>
+      </div>
 
       {/* Tags */}
       {post.tags.length > 0 && (
@@ -169,15 +206,15 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
       {showActions && (
         <div className="flex items-center gap-4 pt-2 border-t border-border/40">
           <motion.button
-            onClick={handleStar}
+            onClick={handleLoveButton}
             whileTap={{ scale: 0.85 }}
             className={cn(
               "flex items-center gap-1.5 text-sm transition-colors relative",
-              isStarred ? "text-primary" : "text-muted-foreground hover:text-primary"
+              isLoved ? "text-primary" : "text-muted-foreground hover:text-primary"
             )}
           >
             <AnimatePresence>
-              {starBurst && (
+              {loveBurst && (
                 <motion.div
                   key="burst"
                   initial={{ scale: 0.5, opacity: 1 }}
@@ -188,10 +225,10 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
                 />
               )}
             </AnimatePresence>
-            <motion.div animate={isStarred ? { rotate: [0, -15, 15, 0] } : {}}>
-              <Star size={17} fill={isStarred ? "currentColor" : "none"} />
+            <motion.div animate={isLoved ? { scale: [1, 1.3, 1] } : {}}>
+              <Heart size={17} fill={isLoved ? "currentColor" : "none"} />
             </motion.div>
-            <span className="font-medium">{starCount}</span>
+            <span className="font-medium">{loveCount}</span>
           </motion.button>
 
           <Link href={`/post/${post.id}`}>

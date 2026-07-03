@@ -16,9 +16,9 @@ export interface Post {
   imageUrl?: string | null;
   /** @nullable */
   videoUrl?: string | null;
-  starCount: number;
+  loveCount: number;
   commentCount: number;
-  isStarred: boolean;
+  isLoved: boolean;
   tags: string[];
   createdAt: string;
 }

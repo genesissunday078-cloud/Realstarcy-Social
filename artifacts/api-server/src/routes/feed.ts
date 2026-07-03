@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { postsTable, starsTable, usersTable, followsTable } from "@workspace/db";
+import { postsTable, lovesTable, usersTable, followsTable } from "@workspace/db";
 import { eq, desc, and, lt, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
@@ -10,7 +10,7 @@ const DEFAULT_CURRENT_USER_ID = 1;
 
 async function formatPost(post: typeof postsTable.$inferSelect, currentUserId: number) {
   const author = await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1);
-  const starred = await db.select().from(starsTable).where(and(eq(starsTable.postId, post.id), eq(starsTable.userId, currentUserId))).limit(1);
+  const loved = await db.select().from(lovesTable).where(and(eq(lovesTable.postId, post.id), eq(lovesTable.userId, currentUserId))).limit(1);
 
   return {
     id: post.id,
@@ -24,9 +24,9 @@ async function formatPost(post: typeof postsTable.$inferSelect, currentUserId: n
     content: post.content,
     imageUrl: post.imageUrl ?? null,
     videoUrl: post.videoUrl ?? null,
-    starCount: post.starCount,
+    loveCount: post.loveCount,
     commentCount: post.commentCount,
-    isStarred: starred.length > 0,
+    isLoved: loved.length > 0,
     tags: post.tags ?? [],
     createdAt: post.createdAt.toISOString(),
   };
@@ -53,7 +53,7 @@ router.get("/feed", async (req, res) => {
 router.get("/trending", async (req, res) => {
   const currentUserId = DEFAULT_CURRENT_USER_ID;
 
-  const posts = await db.select().from(postsTable).orderBy(desc(postsTable.starCount)).limit(10);
+  const posts = await db.select().from(postsTable).orderBy(desc(postsTable.loveCount)).limit(10);
   const formatted = await Promise.all(posts.map(p => formatPost(p, currentUserId)));
 
   const tagCounts: Record<string, number> = {};
@@ -75,13 +75,13 @@ router.get("/trending", async (req, res) => {
 router.get("/stats", async (req, res) => {
   const [{ totalPosts }] = await db.select({ totalPosts: sql<number>`count(*)::int` }).from(postsTable);
   const [{ totalUsers }] = await db.select({ totalUsers: sql<number>`count(*)::int` }).from(usersTable);
-  const [{ totalStars }] = await db.select({ totalStars: sql<number>`coalesce(sum(${postsTable.starCount}), 0)::int` }).from(postsTable);
+  const [{ totalLoves }] = await db.select({ totalLoves: sql<number>`coalesce(sum(${postsTable.loveCount}), 0)::int` }).from(postsTable);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [{ newPostsToday }] = await db.select({ newPostsToday: sql<number>`count(*)::int` }).from(postsTable).where(sql`${postsTable.createdAt} >= ${today}`);
 
-  res.json({ totalPosts, totalUsers, totalStars, newPostsToday });
+  res.json({ totalPosts, totalUsers, totalLoves, newPostsToday });
 });
 
 router.get("/feed/following", async (req, res) => {

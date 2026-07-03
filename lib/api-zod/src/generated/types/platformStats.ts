@@ -9,6 +9,6 @@
 export interface PlatformStats {
   totalPosts: number;
   totalUsers: number;
-  totalStars: number;
+  totalLoves: number;
   newPostsToday: number;
 }

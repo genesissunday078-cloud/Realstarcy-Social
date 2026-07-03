@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { postsTable, starsTable, usersTable, notificationsTable } from "@workspace/db";
+import { postsTable, lovesTable, usersTable, notificationsTable } from "@workspace/db";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { CreatePostBody, ListPostsQueryParams } from "@workspace/api-zod";
 import { formatPost } from "./feed";
@@ -84,7 +84,7 @@ router.delete("/posts/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  await db.delete(starsTable).where(eq(starsTable.postId, id));
+  await db.delete(lovesTable).where(eq(lovesTable.postId, id));
   await db.delete(postsTable).where(and(eq(postsTable.id, id), eq(postsTable.userId, currentUserId)));
 
   const user = await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1);
@@ -95,7 +95,7 @@ router.delete("/posts/:id", async (req, res) => {
   res.status(204).send();
 });
 
-router.post("/posts/:id/star", async (req, res) => {
+router.post("/posts/:id/love", async (req, res) => {
   const currentUserId = DEFAULT_CURRENT_USER_ID;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -103,34 +103,34 @@ router.post("/posts/:id/star", async (req, res) => {
   const [post] = await db.select().from(postsTable).where(eq(postsTable.id, id)).limit(1);
   if (!post) { res.status(404).json({ error: "Not found" }); return; }
 
-  const existing = await db.select().from(starsTable)
-    .where(and(eq(starsTable.postId, id), eq(starsTable.userId, currentUserId)))
+  const existing = await db.select().from(lovesTable)
+    .where(and(eq(lovesTable.postId, id), eq(lovesTable.userId, currentUserId)))
     .limit(1);
 
   if (existing.length === 0) {
-    await db.insert(starsTable).values({ userId: currentUserId, postId: id });
-    const newCount = post.starCount + 1;
-    await db.update(postsTable).set({ starCount: newCount }).where(eq(postsTable.id, id));
+    await db.insert(lovesTable).values({ userId: currentUserId, postId: id });
+    const newCount = post.loveCount + 1;
+    await db.update(postsTable).set({ loveCount: newCount }).where(eq(postsTable.id, id));
     await db.update(usersTable)
-      .set({ starCount: (await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1))[0].starCount + 1 })
+      .set({ loveCount: (await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1))[0].loveCount + 1 })
       .where(eq(usersTable.id, post.userId));
 
     if (post.userId !== currentUserId) {
       await db.insert(notificationsTable).values({
         userId: post.userId,
-        type: "star",
+        type: "love",
         fromUserId: currentUserId,
         postId: id,
       });
     }
 
-    res.json({ starCount: newCount, isStarred: true });
+    res.json({ loveCount: newCount, isLoved: true });
   } else {
-    res.json({ starCount: post.starCount, isStarred: true });
+    res.json({ loveCount: post.loveCount, isLoved: true });
   }
 });
 
-router.delete("/posts/:id/star", async (req, res) => {
+router.delete("/posts/:id/love", async (req, res) => {
   const currentUserId = DEFAULT_CURRENT_USER_ID;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -138,23 +138,23 @@ router.delete("/posts/:id/star", async (req, res) => {
   const [post] = await db.select().from(postsTable).where(eq(postsTable.id, id)).limit(1);
   if (!post) { res.status(404).json({ error: "Not found" }); return; }
 
-  const existing = await db.select().from(starsTable)
-    .where(and(eq(starsTable.postId, id), eq(starsTable.userId, currentUserId)))
+  const existing = await db.select().from(lovesTable)
+    .where(and(eq(lovesTable.postId, id), eq(lovesTable.userId, currentUserId)))
     .limit(1);
 
   if (existing.length > 0) {
-    await db.delete(starsTable).where(and(eq(starsTable.postId, id), eq(starsTable.userId, currentUserId)));
-    const newCount = Math.max(0, post.starCount - 1);
-    await db.update(postsTable).set({ starCount: newCount }).where(eq(postsTable.id, id));
+    await db.delete(lovesTable).where(and(eq(lovesTable.postId, id), eq(lovesTable.userId, currentUserId)));
+    const newCount = Math.max(0, post.loveCount - 1);
+    await db.update(postsTable).set({ loveCount: newCount }).where(eq(postsTable.id, id));
 
     const author = await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1);
-    if (author[0] && author[0].starCount > 0) {
-      await db.update(usersTable).set({ starCount: author[0].starCount - 1 }).where(eq(usersTable.id, post.userId));
+    if (author[0] && author[0].loveCount > 0) {
+      await db.update(usersTable).set({ loveCount: author[0].loveCount - 1 }).where(eq(usersTable.id, post.userId));
     }
 
-    res.json({ starCount: newCount, isStarred: false });
+    res.json({ loveCount: newCount, isLoved: false });
   } else {
-    res.json({ starCount: post.starCount, isStarred: false });
+    res.json({ loveCount: post.loveCount, isLoved: false });
   }
 });
 

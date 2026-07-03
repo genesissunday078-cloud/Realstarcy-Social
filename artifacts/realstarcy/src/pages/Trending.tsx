@@ -48,7 +48,7 @@ export default function Trending() {
 
       {/* Trending posts */}
       <div>
-        <h3 className="text-xs uppercase tracking-widest text-muted-foreground mb-4 font-medium">Most Starred Moments</h3>
+        <h3 className="text-xs uppercase tracking-widest text-muted-foreground mb-4 font-medium">Most Loved Moments</h3>
         <div className="flex flex-col gap-4">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
@@ -64,7 +64,7 @@ export default function Trending() {
           ) : data?.posts.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-muted-foreground font-serif text-lg">Nothing trending yet.</p>
-              <p className="text-sm text-muted-foreground mt-1">Star posts you love to push them here.</p>
+              <p className="text-sm text-muted-foreground mt-1">Love posts to push them here.</p>
             </div>
           ) : (
             data?.posts.map((post, i) => (

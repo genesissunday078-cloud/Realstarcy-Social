@@ -10,7 +10,7 @@ export type NotificationType = typeof NotificationType[keyof typeof Notification
 
 
 export const NotificationType = {
-  star: 'star',
+  love: 'love',
   comment: 'comment',
   follow: 'follow',
   mention: 'mention',

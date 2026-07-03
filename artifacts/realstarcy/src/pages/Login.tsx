@@ -26,7 +26,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-12">
           <h1 className="font-serif text-5xl text-primary mb-3 tracking-tight">Realstarcy</h1>
-          <p className="text-muted-foreground text-base">Real moments. Starred.</p>
+          <p className="text-muted-foreground text-base">Real moments. Loved.</p>
         </div>
 
         {/* Buttons */}

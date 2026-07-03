@@ -9,20 +9,20 @@ export const postsTable = pgTable("posts", {
   content: text("content").notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"),
-  starCount: integer("star_count").notNull().default(0),
+  loveCount: integer("love_count").notNull().default(0),
   commentCount: integer("comment_count").notNull().default(0),
   tags: text("tags").array().notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const starsTable = pgTable("stars", {
+export const lovesTable = pgTable("loves", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   postId: integer("post_id").notNull().references(() => postsTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true, starCount: true, commentCount: true, createdAt: true });
+export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true, loveCount: true, commentCount: true, createdAt: true });
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Post = typeof postsTable.$inferSelect;
-export type Star = typeof starsTable.$inferSelect;
+export type Love = typeof lovesTable.$inferSelect;

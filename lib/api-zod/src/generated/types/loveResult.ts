@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface StarResult {
-  starCount: number;
-  isStarred: boolean;
+export interface LoveResult {
+  loveCount: number;
+  isLoved: boolean;
 }

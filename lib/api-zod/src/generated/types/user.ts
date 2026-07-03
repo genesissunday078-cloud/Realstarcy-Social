@@ -13,7 +13,7 @@ export interface User {
   avatar: string;
   bio: string;
   postCount: number;
-  starCount: number;
+  loveCount: number;
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;

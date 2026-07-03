@@ -2,13 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Star, MessageCircle, Share2, Bell, Settings,
+  Heart, MessageCircle, Share2, Bell, Settings,
   Home, TrendingUp, PlusSquare, ChevronDown, Users, Volume2, VolumeX,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   useGetFeed, useGetFollowingFeed, useGetMe, useGetNotifications,
-  useStarPost, useUnstarPost, useFollowUser, useUnfollowUser,
+  useLovePost, useUnlovePost, useFollowUser, useUnfollowUser,
   getGetFeedQueryKey, getGetFollowingFeedQueryKey, getGetTrendingQueryKey,
   getGetUserProfileQueryKey,
 } from "@workspace/api-client-react";
@@ -77,11 +77,13 @@ interface SlideProps {
 
 function PostSlide({ post, index, isActive }: SlideProps) {
   const queryClient = useQueryClient();
-  const [isStarred, setIsStarred] = useState(post.isStarred);
-  const [starCount, setStarCount] = useState(post.starCount);
-  const [starBurst, setStarBurst] = useState(false);
+  const [isLoved, setIsLoved] = useState(post.isLoved);
+  const [loveCount, setLoveCount] = useState(post.loveCount);
+  const [loveBurst, setLoveBurst] = useState(false);
+  const [bigHeart, setBigHeart] = useState(false);
   const [followed, setFollowed] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const lastTapRef = useRef(0);
 
   const invalidateFeeds = () => {
     queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
@@ -89,14 +91,14 @@ function PostSlide({ post, index, isActive }: SlideProps) {
     queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
   };
 
-  const starMutation = useStarPost({
+  const loveMutation = useLovePost({
     mutation: {
-      onSuccess: (data) => { setStarCount(data.starCount); setIsStarred(data.isStarred); invalidateFeeds(); },
+      onSuccess: (data) => { setLoveCount(data.loveCount); setIsLoved(data.isLoved); invalidateFeeds(); },
     },
   });
-  const unstarMutation = useUnstarPost({
+  const unloveMutation = useUnlovePost({
     mutation: {
-      onSuccess: (data) => { setStarCount(data.starCount); setIsStarred(data.isStarred); invalidateFeeds(); },
+      onSuccess: (data) => { setLoveCount(data.loveCount); setIsLoved(data.isLoved); invalidateFeeds(); },
     },
   });
   const followMutation = useFollowUser({
@@ -116,20 +118,40 @@ function PostSlide({ post, index, isActive }: SlideProps) {
     },
   });
 
-  const handleStar = () => {
-    if (isStarred) {
-      unstarMutation.mutate({ id: post.id });
-    } else {
-      setStarBurst(true);
-      setTimeout(() => setStarBurst(false), 700);
-      starMutation.mutate({ id: post.id });
+  const doLove = () => {
+    if (!isLoved) {
+      setLoveBurst(true);
+      setTimeout(() => setLoveBurst(false), 700);
+      loveMutation.mutate({ id: post.id });
     }
+  };
+
+  const handleLoveButton = () => {
+    if (isLoved) {
+      unloveMutation.mutate({ id: post.id });
+    } else {
+      doLove();
+    }
+  };
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      doLove();
+      setBigHeart(true);
+      setTimeout(() => setBigHeart(false), 800);
+    }
+    lastTapRef.current = now;
   };
 
   const gradient = GRADIENTS[index % GRADIENTS.length];
 
   return (
-    <div className="relative w-full flex-shrink-0" style={{ height: "100dvh" }}>
+    <div
+      className="relative w-full flex-shrink-0"
+      style={{ height: "100dvh" }}
+      onClick={handleDoubleTap}
+    >
       {/* Background — video takes priority */}
       {post.videoUrl ? (
         <VideoSlide src={post.videoUrl} isActive={isActive} />
@@ -147,6 +169,22 @@ function PostSlide({ post, index, isActive }: SlideProps) {
       {/* Gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/40" />
 
+      {/* TikTok-style double-tap heart burst */}
+      <AnimatePresence>
+        {bigHeart && (
+          <motion.div
+            key="big-heart"
+            initial={{ scale: 0, opacity: 0.9 }}
+            animate={{ scale: 1.4, opacity: 1 }}
+            exit={{ scale: 1.7, opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+          >
+            <Heart size={110} fill="#f5a623" stroke="#f5a623" className="drop-shadow-2xl" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Right action bar */}
       <div className="absolute right-3 bottom-28 flex flex-col items-center gap-5 z-20">
         {/* Author avatar */}
@@ -161,6 +199,7 @@ function PostSlide({ post, index, isActive }: SlideProps) {
             <button
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 if (followed) unfollowMutation.mutate({ username: post.author.username });
                 else followMutation.mutate({ username: post.author.username });
               }}
@@ -174,15 +213,15 @@ function PostSlide({ post, index, isActive }: SlideProps) {
           </div>
         </Link>
 
-        {/* Star */}
+        {/* Love */}
         <div className="flex flex-col items-center gap-1">
           <motion.button
-            onClick={handleStar}
+            onClick={(e) => { e.stopPropagation(); handleLoveButton(); }}
             whileTap={{ scale: 0.75 }}
             className="relative w-11 h-11 flex items-center justify-center"
           >
             <AnimatePresence>
-              {starBurst && (
+              {loveBurst && (
                 <motion.div
                   key="burst"
                   initial={{ scale: 0.5, opacity: 0.9 }}
@@ -192,21 +231,21 @@ function PostSlide({ post, index, isActive }: SlideProps) {
                 />
               )}
             </AnimatePresence>
-            <motion.div animate={isStarred ? { rotate: [0, -20, 20, 0], scale: [1, 1.3, 1] } : {}}>
-              <Star
+            <motion.div animate={isLoved ? { scale: [1, 1.35, 1] } : {}}>
+              <Heart
                 size={28}
-                fill={isStarred ? "#f5a623" : "none"}
-                stroke={isStarred ? "#f5a623" : "white"}
+                fill={isLoved ? "#f5a623" : "none"}
+                stroke={isLoved ? "#f5a623" : "white"}
                 strokeWidth={1.5}
               />
             </motion.div>
           </motion.button>
-          <span className="text-white text-xs font-semibold drop-shadow">{starCount.toLocaleString()}</span>
+          <span className="text-white text-xs font-semibold drop-shadow">{loveCount.toLocaleString()}</span>
         </div>
 
         {/* Comment */}
         <div className="flex flex-col items-center gap-1">
-          <Link href={`/post/${post.id}`}>
+          <Link href={`/post/${post.id}`} onClick={(e) => e.stopPropagation()}>
             <button className="w-11 h-11 flex items-center justify-center">
               <MessageCircle size={28} stroke="white" strokeWidth={1.5} fill="none" />
             </button>
@@ -216,7 +255,8 @@ function PostSlide({ post, index, isActive }: SlideProps) {
 
         {/* Share */}
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (navigator.share) navigator.share({ url: `${window.location.origin}/post/${post.id}` });
           }}
           className="w-11 h-11 flex items-center justify-center"

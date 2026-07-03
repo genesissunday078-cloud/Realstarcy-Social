@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ChevronRight, LogOut, User, Bell, Shield, Info,
-  DollarSign, Video, Star, Pencil, Check, Camera, Loader2,
+  DollarSign, Video, Heart, Pencil, Check, Camera, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -167,9 +167,9 @@ export default function Settings() {
             </div>
           ))}
           <div className="flex items-center gap-1 ml-auto">
-            <Star size={12} className="text-primary" />
-            <p className="text-sm font-bold">{me?.starCount?.toLocaleString() ?? 0}</p>
-            <p className="text-[10px] text-muted-foreground">stars</p>
+            <Heart size={12} className="text-primary" />
+            <p className="text-sm font-bold">{me?.loveCount?.toLocaleString() ?? 0}</p>
+            <p className="text-[10px] text-muted-foreground">loves</p>
           </div>
         </div>
       </div>
@@ -239,7 +239,7 @@ export default function Settings() {
         </Section>
 
         <Section title="Realstarcy">
-          <MenuRow icon={<Star size={16} className="text-primary" />} label="About Realstarcy" sublabel="Built for real artists & talent" href="/about" />
+          <MenuRow icon={<Heart size={16} className="text-primary" />} label="About Realstarcy" sublabel="Built for real artists & talent" href="/about" />
           <MenuRow icon={<Info size={16} />} label="Terms & Privacy" onClick={() => {}} />
         </Section>
 

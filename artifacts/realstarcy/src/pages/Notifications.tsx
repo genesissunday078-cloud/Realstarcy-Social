@@ -9,11 +9,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star, MessageCircle, UserPlus, AtSign, Bell } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, AtSign, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const typeConfig = {
-  star: { icon: Star, label: "starred your moment", color: "text-primary" },
+  love: { icon: Heart, label: "loved your moment", color: "text-primary" },
   comment: { icon: MessageCircle, label: "responded to your moment", color: "text-blue-400" },
   follow: { icon: UserPlus, label: "started following you", color: "text-green-400" },
   mention: { icon: AtSign, label: "mentioned you", color: "text-purple-400" },
