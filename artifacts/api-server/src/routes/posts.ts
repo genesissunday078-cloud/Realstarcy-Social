@@ -7,10 +7,8 @@ import { formatPost } from "./feed";
 
 const router = Router();
 
-const DEFAULT_CURRENT_USER_ID = 1;
-
 router.get("/posts", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const parsed = ListPostsQueryParams.safeParse(req.query);
   const userId = parsed.success ? parsed.data.userId ?? undefined : undefined;
   const tag = parsed.success ? parsed.data.tag ?? undefined : undefined;
@@ -42,7 +40,7 @@ router.get("/posts", async (req, res) => {
 });
 
 router.post("/posts", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const parsed = CreatePostBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input" });
@@ -68,7 +66,7 @@ router.post("/posts", async (req, res) => {
 });
 
 router.get("/posts/:id", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -80,7 +78,7 @@ router.get("/posts/:id", async (req, res) => {
 });
 
 router.delete("/posts/:id", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -96,7 +94,7 @@ router.delete("/posts/:id", async (req, res) => {
 });
 
 router.post("/posts/:id/love", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -131,7 +129,7 @@ router.post("/posts/:id/love", async (req, res) => {
 });
 
 router.delete("/posts/:id/love", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 

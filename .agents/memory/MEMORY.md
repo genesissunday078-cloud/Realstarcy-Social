@@ -1,1 +1,2 @@
 - [Realstarcy app architecture](realstarcy-arch.md) — key DB schema, API patterns, brand color, and celebrity account conventions
+- [Realstarcy Clerk auth](realstarcy-clerk-auth.md) — JIT provisioning pattern, clerkClient singleton usage, DB migration approach

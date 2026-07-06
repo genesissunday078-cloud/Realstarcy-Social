@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Dark background circle -->
+  <circle cx="100" cy="100" r="100" fill="#0a0a0f"/>
+  <!-- Stylised star/spark -->
+  <path d="M100 30 L108 88 L166 80 L116 118 L138 174 L100 138 L62 174 L84 118 L34 80 L92 88 Z"
+        fill="#ff0050" opacity="0.15"/>
+  <!-- Bold R letterform -->
+  <text x="52" y="138" font-family="Georgia, serif" font-size="96" font-weight="700"
+        letter-spacing="-4" fill="#ff0050">R</text>
+  <!-- Small star accent top-right of R -->
+  <circle cx="148" cy="58" r="6" fill="#ff0050"/>
+  <line x1="148" y1="46" x2="148" y2="70" stroke="#ff0050" stroke-width="2" stroke-linecap="round"/>
+  <line x1="136" y1="58" x2="160" y2="58" stroke="#ff0050" stroke-width="2" stroke-linecap="round"/>
+</svg>

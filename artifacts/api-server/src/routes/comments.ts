@@ -6,8 +6,6 @@ import { CreateCommentBody } from "@workspace/api-zod";
 
 const router = Router();
 
-const DEFAULT_CURRENT_USER_ID = 1;
-
 router.get("/posts/:id/comments", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -36,7 +34,7 @@ router.get("/posts/:id/comments", async (req, res) => {
 });
 
 router.post("/posts/:id/comments", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -82,7 +80,7 @@ router.post("/posts/:id/comments", async (req, res) => {
 });
 
 router.delete("/posts/:id/comments/:commentId", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const id = parseInt(req.params.id);
   const commentId = parseInt(req.params.commentId);
   if (isNaN(id) || isNaN(commentId)) { res.status(400).json({ error: "Invalid id" }); return; }

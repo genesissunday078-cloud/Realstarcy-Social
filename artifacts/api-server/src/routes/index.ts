@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { requireAuth } from "../middlewares/auth";
 import healthRouter from "./health";
 import feedRouter from "./feed";
 import postsRouter from "./posts";
@@ -9,7 +10,12 @@ import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
+// Health check is always public
 router.use(healthRouter);
+
+// All other routes require authentication
+router.use(requireAuth);
+
 router.use(feedRouter);
 router.use(postsRouter);
 router.use(commentsRouter);

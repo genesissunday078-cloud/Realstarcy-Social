@@ -6,8 +6,6 @@ import { sql } from "drizzle-orm";
 
 const router = Router();
 
-const DEFAULT_CURRENT_USER_ID = 1;
-
 async function formatPost(post: typeof postsTable.$inferSelect, currentUserId: number) {
   const author = await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1);
   const loved = await db.select().from(lovesTable).where(and(eq(lovesTable.postId, post.id), eq(lovesTable.userId, currentUserId))).limit(1);
@@ -33,7 +31,7 @@ async function formatPost(post: typeof postsTable.$inferSelect, currentUserId: n
 }
 
 router.get("/feed", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const limit = parseInt(req.query.limit as string) || 20;
   const cursor = req.query.cursor as string | undefined;
 
@@ -51,7 +49,7 @@ router.get("/feed", async (req, res) => {
 });
 
 router.get("/trending", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
 
   const posts = await db.select().from(postsTable).orderBy(desc(postsTable.loveCount)).limit(10);
   const formatted = await Promise.all(posts.map(p => formatPost(p, currentUserId)));
@@ -85,7 +83,7 @@ router.get("/stats", async (req, res) => {
 });
 
 router.get("/feed/following", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const limit = parseInt(req.query.limit as string) || 20;
   const cursor = req.query.cursor as string | undefined;
 

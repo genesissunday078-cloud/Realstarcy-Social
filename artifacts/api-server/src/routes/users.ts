@@ -6,8 +6,6 @@ import { UpdateMeBody } from "@workspace/api-zod";
 
 const router = Router();
 
-const DEFAULT_CURRENT_USER_ID = 1;
-
 const CELEBRITY_FOLLOWER_BONUS: Record<number, number> = { 1: 3000000 };
 const CELEBRITY_LOVE_BONUS: Record<number, number> = { 1: 10000000 };
 
@@ -27,7 +25,7 @@ async function getFollowCounts(userId: number) {
 }
 
 router.get("/users/me", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1);
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
 
@@ -49,7 +47,7 @@ router.get("/users/me", async (req, res) => {
 });
 
 router.put("/users/me", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const parsed = UpdateMeBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
@@ -85,7 +83,7 @@ router.put("/users/me", async (req, res) => {
 });
 
 router.get("/users/:username", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const { username } = req.params;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
@@ -113,7 +111,7 @@ router.get("/users/:username", async (req, res) => {
 });
 
 router.post("/users/:username/follow", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const { username } = req.params;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
@@ -138,7 +136,7 @@ router.post("/users/:username/follow", async (req, res) => {
 });
 
 router.delete("/users/:username/follow", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
   const { username } = req.params;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);

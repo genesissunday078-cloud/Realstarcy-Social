@@ -4,17 +4,12 @@ import { motion } from "framer-motion";
 export default function Login() {
   const [, navigate] = useLocation();
 
-  const handleLogin = () => {
-    localStorage.setItem("realstarcy_logged_in", "true");
-    navigate("/");
-  };
-
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden px-6">
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/8 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-primary/5 blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-[#ff0050]/5 blur-[100px]" />
       </div>
 
       <motion.div
@@ -29,12 +24,12 @@ export default function Login() {
           <p className="text-muted-foreground text-base">Real moments. Loved.</p>
         </div>
 
-        {/* Buttons */}
+        {/* Social sign-in buttons */}
         <div className="flex flex-col gap-3 mb-8">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleLogin}
+            onClick={() => navigate("/sign-up")}
             className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-gray-800 font-medium text-sm shadow-sm hover:bg-gray-50 transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24">
@@ -49,7 +44,7 @@ export default function Login() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleLogin}
+            onClick={() => navigate("/sign-up")}
             className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-zinc-900 text-white font-medium text-sm border border-zinc-700 hover:bg-zinc-800 transition-colors"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -67,7 +62,7 @@ export default function Login() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleLogin}
+            onClick={() => navigate("/sign-up")}
             className="w-full py-3.5 px-4 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors"
           >
             Sign up with email
@@ -77,7 +72,10 @@ export default function Login() {
         {/* Already have account */}
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <button onClick={handleLogin} className="text-primary font-medium hover:underline">
+          <button
+            onClick={() => navigate("/sign-in")}
+            className="text-primary font-medium hover:underline"
+          >
             Log in
           </button>
         </p>

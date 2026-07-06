@@ -5,10 +5,8 @@ import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
-const DEFAULT_CURRENT_USER_ID = 1;
-
 router.get("/notifications", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
 
   const notifications = await db.select().from(notificationsTable)
     .where(eq(notificationsTable.userId, currentUserId))
@@ -43,7 +41,7 @@ router.get("/notifications", async (req, res) => {
 });
 
 router.put("/notifications/read", async (req, res) => {
-  const currentUserId = DEFAULT_CURRENT_USER_ID;
+  const currentUserId = req.appUserId;
 
   await db.update(notificationsTable)
     .set({ isRead: true })
