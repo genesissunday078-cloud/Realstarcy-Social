@@ -17,6 +17,18 @@ import { Heart, Pencil, X, Check, Camera, Loader2, Grid3X3, List, MessageCircle 
 import { cn } from "@/lib/utils";
 import type { Post } from "@workspace/api-client-react";
 
+function formatCount(n: number): string {
+  if (n >= 1_000_000) {
+    const v = n / 1_000_000;
+    return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "M";
+  }
+  if (n >= 1_000) {
+    const v = n / 1_000;
+    return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "K";
+  }
+  return n.toString();
+}
+
 function PostGridItem({ post }: { post: Post }) {
   return (
     <Link href={`/post/${post.id}`}>
@@ -198,21 +210,21 @@ export default function Profile() {
             {/* Stats row */}
             <div className="flex items-center justify-center gap-8 mt-4 py-4 border-t border-b border-border/30">
               <div className="text-center">
-                <p className="font-bold text-foreground text-lg leading-tight">{user.followingCount.toLocaleString()}</p>
+                <p className="font-bold text-foreground text-lg leading-tight">{formatCount(user.followingCount)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Following</p>
               </div>
               <div className="text-center">
-                <p className="font-bold text-foreground text-lg leading-tight">{user.followerCount.toLocaleString()}</p>
+                <p className="font-bold text-foreground text-lg leading-tight">{formatCount(user.followerCount)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Followers</p>
               </div>
               <div className="text-center">
-                <p className="font-bold text-foreground text-lg leading-tight">{user.postCount.toLocaleString()}</p>
+                <p className="font-bold text-foreground text-lg leading-tight">{formatCount(user.postCount)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Posts</p>
               </div>
               <div className="text-center">
                 <p className="font-bold text-[#ff0050] text-lg leading-tight flex items-center justify-center gap-1">
                   <Heart size={14} fill="#ff0050" stroke="#ff0050" />
-                  {user.loveCount.toLocaleString()}
+                  {formatCount(user.loveCount)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">Loves</p>
               </div>

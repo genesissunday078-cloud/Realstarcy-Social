@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Heart, MessageCircle, Share2, Bell, X, Check,
-  Home, TrendingUp, Volume2, VolumeX, Camera, User, FlipHorizontal,
-  Music2, Sparkles,
+  Heart, MessageCircle, Share2, X, Check,
+  Home, Volume2, VolumeX, Camera, User, FlipHorizontal,
+  Music2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -50,6 +50,18 @@ function formatDate(dateStr: string) {
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   return `${Math.floor(diff / 86400)}d`;
+}
+
+function formatCount(n: number): string {
+  if (n >= 1_000_000) {
+    const v = n / 1_000_000;
+    return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "M";
+  }
+  if (n >= 1_000) {
+    const v = n / 1_000;
+    return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "K";
+  }
+  return n.toString();
 }
 
 function VideoSlide({ src, isActive }: { src: string; isActive: boolean }) {
@@ -162,7 +174,7 @@ function SponsoredSlide({ card, index }: { card: typeof SPONSORED_CARDS[0]; inde
               strokeWidth={1.5}
             />
           </motion.button>
-          <span className="text-white text-xs font-semibold drop-shadow">{likeCount.toLocaleString()}</span>
+          <span className="text-white text-xs font-semibold drop-shadow">{formatCount(likeCount)}</span>
         </div>
       </div>
 
@@ -344,7 +356,7 @@ function PostSlide({ post, index, isActive }: SlideProps) {
               />
             </motion.div>
           </motion.button>
-          <span className="text-white text-xs font-semibold drop-shadow">{loveCount.toLocaleString()}</span>
+          <span className="text-white text-xs font-semibold drop-shadow">{formatCount(loveCount)}</span>
         </div>
 
         <div className="flex flex-col items-center gap-1">
@@ -353,7 +365,7 @@ function PostSlide({ post, index, isActive }: SlideProps) {
               <MessageCircle size={28} stroke="white" strokeWidth={1.5} fill="none" />
             </button>
           </Link>
-          <span className="text-white text-xs font-semibold drop-shadow">{post.commentCount}</span>
+          <span className="text-white text-xs font-semibold drop-shadow">{formatCount(post.commentCount)}</span>
         </div>
 
         <button
@@ -470,13 +482,13 @@ const SAMPLE_TRACKS = [
 ];
 
 function CameraModal({ onClose }: { onClose: () => void }) {
+  const [, navigate] = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [activeFilter, setActiveFilter] = useState("none");
-  const [showFilters, setShowFilters] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [captured, setCaptured] = useState(false);
@@ -510,7 +522,12 @@ function CameraModal({ onClose }: { onClose: () => void }) {
 
   const handleCapture = () => {
     setCaptured(true);
-    setTimeout(() => setCaptured(false), 200);
+    setTimeout(() => {
+      setCaptured(false);
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      onClose();
+      navigate("/create");
+    }, 300);
   };
 
   const selectedTrackObj = SAMPLE_TRACKS.find(t => t.id === selectedTrack);
@@ -548,7 +565,7 @@ function CameraModal({ onClose }: { onClose: () => void }) {
           <motion.div
             className="absolute inset-0"
             animate={captured ? { opacity: 0 } : { opacity: 1 }}
-            transition={{ duration: 0.1 }}
+            transition={{ duration: 0.15 }}
           >
             <video
               ref={videoRef}
@@ -564,10 +581,10 @@ function CameraModal({ onClose }: { onClose: () => void }) {
           <AnimatePresence>
             {captured && (
               <motion.div
-                initial={{ opacity: 0.8 }}
+                initial={{ opacity: 1 }}
                 animate={{ opacity: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                transition={{ duration: 0.3 }}
                 className="absolute inset-0 bg-white z-30 pointer-events-none"
               />
             )}
@@ -592,41 +609,6 @@ function CameraModal({ onClose }: { onClose: () => void }) {
             )}
           </AnimatePresence>
 
-          {/* Filters strip */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="absolute bottom-44 left-0 right-0 z-20 px-4"
-              >
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                  {CAMERA_FILTERS.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => setActiveFilter(f.id)}
-                      className={cn(
-                        "flex-shrink-0 flex flex-col items-center gap-1.5",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "w-14 h-14 rounded-xl overflow-hidden border-2 transition-all",
-                          activeFilter === f.id ? "border-[#ff0050] scale-110" : "border-white/20"
-                        )}
-                        style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", filter: f.css }}
-                      />
-                      <span className={cn("text-[10px] font-medium", activeFilter === f.id ? "text-[#ff0050]" : "text-white/60")}>
-                        {f.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Music picker */}
           <AnimatePresence>
             {showMusic && (
@@ -634,7 +616,7 @@ function CameraModal({ onClose }: { onClose: () => void }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="absolute bottom-44 left-4 right-4 z-20 bg-black/80 backdrop-blur-md rounded-2xl p-4"
+                className="absolute bottom-52 left-4 right-4 z-20 bg-black/80 backdrop-blur-md rounded-2xl p-4"
               >
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex items-center gap-2"><Music2 size={14} /> Add Music</p>
@@ -678,18 +660,11 @@ function CameraModal({ onClose }: { onClose: () => void }) {
         {!error && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setShowMusic(v => !v); setShowFilters(false); }}
+              onClick={() => setShowMusic(v => !v)}
               className={cn("w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors",
                 showMusic ? "bg-[#ff0050]" : "bg-black/50")}
             >
               <Music2 size={18} className="text-white" />
-            </button>
-            <button
-              onClick={() => { setShowFilters(v => !v); setShowMusic(false); }}
-              className={cn("w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors",
-                showFilters ? "bg-[#ff0050]" : "bg-black/50")}
-            >
-              <Sparkles size={18} className="text-white" />
             </button>
             <button
               onClick={() => setFacingMode(m => m === "user" ? "environment" : "user")}
@@ -701,9 +676,9 @@ function CameraModal({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
-      {/* Bottom controls */}
+      {/* Bottom controls: shutter + always-visible filter strip */}
       {!error && (
-        <div className="absolute bottom-10 left-0 right-0 z-20 flex flex-col items-center gap-4">
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-4 pb-10">
           {/* Shutter */}
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -711,22 +686,39 @@ function CameraModal({ onClose }: { onClose: () => void }) {
             onPointerUp={() => { setRecording(false); handleCapture(); }}
             onPointerLeave={() => setRecording(false)}
             className={cn(
-              "w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-all duration-150 shadow-xl",
+              "w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all duration-150 shadow-xl",
               recording ? "border-[#ff0050]" : "border-white"
             )}
           >
             <div className={cn(
               "transition-all duration-150 shadow-inner",
-              recording ? "w-9 h-9 bg-[#ff0050] rounded-lg" : "w-15 h-15 bg-white rounded-full w-[60px] h-[60px]"
+              recording ? "w-9 h-9 bg-[#ff0050] rounded-lg" : "w-[60px] h-[60px] bg-white rounded-full"
             )} />
           </motion.button>
-          <p className="text-white/50 text-xs tracking-wide">HOLD VIDEO · TAP PHOTO</p>
 
-          <Link href="/create" onClick={onClose}>
-            <button className="text-white/50 text-xs underline underline-offset-4 mt-1">
-              Create text post instead
-            </button>
-          </Link>
+          {/* Filter strip — swipe left/right */}
+          <div className="w-full overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="flex gap-3 px-6" style={{ width: "max-content" }}>
+              {CAMERA_FILTERS.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFilter(f.id)}
+                  className="flex-shrink-0 flex flex-col items-center gap-1"
+                >
+                  <div
+                    className={cn(
+                      "w-12 h-12 rounded-xl border-2 transition-all duration-150",
+                      activeFilter === f.id ? "border-[#ff0050] scale-110" : "border-white/20"
+                    )}
+                    style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", filter: f.css }}
+                  />
+                  <span className={cn("text-[9px] font-medium", activeFilter === f.id ? "text-[#ff0050]" : "text-white/55")}>
+                    {f.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </motion.div>
@@ -831,6 +823,25 @@ export default function Feed() {
   const { data: notifications } = useGetNotifications();
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
+
+  const TAB_ORDER: FeedTab[] = ["realstarcy", "following", "foryou"];
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+  };
+
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      const idx = TAB_ORDER.indexOf(tab);
+      if (dx < 0 && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
+      else if (dx > 0 && idx > 0) setTab(TAB_ORDER[idx - 1]);
+    }
+  };
 
   const forYouPosts = forYouData?.posts ?? [];
   const followingPosts = followingData?.posts ?? [];
@@ -861,7 +872,12 @@ export default function Feed() {
   ];
 
   return (
-    <div className="relative w-full bg-black" style={{ height: "100dvh" }}>
+    <div
+      className="relative w-full bg-black"
+      style={{ height: "100dvh" }}
+      onTouchStart={handleSwipeStart}
+      onTouchEnd={handleSwipeEnd}
+    >
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-3 pb-2 pointer-events-none">
         <div className="pointer-events-auto">
           <Link href="/">
