@@ -44,19 +44,21 @@ function PostGridItem({ post }: { post: Post }) {
 }
 
 export default function Profile() {
-  const { username } = useParams<{ username: string }>();
+  const { username: profileSlug } = useParams<{ username: string }>();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState("");
   const [saved, setSaved] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: user, isLoading: userLoading } = useGetUserProfile(username ?? "", {
-    query: { enabled: !!username, queryKey: getGetUserProfileQueryKey(username ?? "") },
+  const { data: user, isLoading: userLoading } = useGetUserProfile(profileSlug ?? "", {
+    query: { enabled: !!profileSlug, queryKey: getGetUserProfileQueryKey(profileSlug ?? "") },
   });
   const { data: postsData, isLoading: postsLoading } = useListPosts(
     { userId: user?.id },
@@ -67,34 +69,48 @@ export default function Profile() {
   useEffect(() => {
     if (user && editOpen) {
       setDisplayName(user.displayName);
+      setUsername(user.username);
       setBio(user.bio ?? "");
       setAvatar(user.avatar ?? "");
+      setUsernameError("");
     }
   }, [user, editOpen]);
 
   const updateMe = useUpdateMe({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (updated) => {
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") });
+        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(profileSlug ?? "") });
+        queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(updated.username) });
         setSaved(true);
-        setTimeout(() => { setSaved(false); setEditOpen(false); }, 1200);
+        setTimeout(() => {
+          setSaved(false);
+          setEditOpen(false);
+          if (updated.username !== profileSlug) {
+            window.location.href = `/profile/${updated.username}`;
+          }
+        }, 1200);
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        if (msg === "Username taken") setUsernameError("That username is already taken.");
+        else setUsernameError("Something went wrong.");
       },
     },
   });
 
   const followMutation = useFollowUser({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(profileSlug ?? "") }),
     },
   });
   const unfollowMutation = useUnfollowUser({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(username ?? "") }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(profileSlug ?? "") }),
     },
   });
 
-  const isOwnProfile = me?.username === username;
+  const isOwnProfile = me?.username === profileSlug;
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -219,8 +235,8 @@ export default function Profile() {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => user.isFollowing
-                    ? unfollowMutation.mutate({ username: username! })
-                    : followMutation.mutate({ username: username! })
+                    ? unfollowMutation.mutate({ username: profileSlug! })
+                    : followMutation.mutate({ username: profileSlug! })
                   }
                   disabled={followMutation.isPending || unfollowMutation.isPending}
                   className={`px-8 py-2 rounded-lg text-sm font-bold transition-colors ${
@@ -242,18 +258,18 @@ export default function Profile() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  onSubmit={e => { e.preventDefault(); updateMe.mutate({ data: { displayName, bio, avatar } }); }}
+                  onSubmit={e => { e.preventDefault(); updateMe.mutate({ data: { username, displayName, bio, avatar } }); }}
                   className="mt-5 bg-card border border-border rounded-xl p-5 space-y-4 overflow-hidden text-left"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-base">Edit Account</h3>
+                    <h3 className="font-serif text-base">Edit Profile</h3>
                     <button type="button" onClick={() => setEditOpen(false)} className="text-muted-foreground hover:text-foreground">
                       <X size={18} />
                     </button>
                   </div>
 
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-1.5 block">Name</Label>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">Display Name</Label>
                     <Input
                       value={displayName}
                       onChange={e => setDisplayName(e.target.value)}
@@ -263,13 +279,17 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-1.5 block">Nickname / Handle</Label>
-                    <Input
-                      value={user.username}
-                      disabled
-                      className="bg-secondary border-border opacity-50"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Username cannot be changed</p>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">Username</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
+                      <Input
+                        value={username}
+                        onChange={e => { setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30)); setUsernameError(""); }}
+                        placeholder="your_handle"
+                        className="bg-secondary border-border pl-7"
+                      />
+                    </div>
+                    {usernameError && <p className="text-xs text-red-400 mt-1">{usernameError}</p>}
                   </div>
 
                   <div>
@@ -297,7 +317,7 @@ export default function Profile() {
                   <motion.button
                     type="submit"
                     whileTap={{ scale: 0.97 }}
-                    disabled={updateMe.isPending || !displayName.trim()}
+                    disabled={updateMe.isPending || !displayName.trim() || !username.trim()}
                     className="w-full py-3 bg-[#ff0050] text-white rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {saved ? <><Check size={15} /> Saved!</> : updateMe.isPending ? "Saving…" : "Save"}

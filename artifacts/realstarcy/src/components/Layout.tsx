@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useGetMe, useGetNotifications } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
-import { Home, TrendingUp, Bell, User, Settings } from "lucide-react";
+import { Home, TrendingUp, Bell, User, Settings, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const sidebarItems = [
     { href: "/", icon: Home, label: "Home" },
+    { href: "/search", icon: Search, label: "Search" },
     { href: "/trending", icon: TrendingUp, label: "Trend" },
     { href: "/notifications", icon: Bell, label: "Alerts", badge: unreadCount },
     { href: profileHref, icon: User, label: "Me", matchPrefix: "/profile" },
@@ -131,14 +132,14 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </Link>
 
-          {/* Trending */}
-          <Link href="/trending">
+          {/* Search */}
+          <Link href="/search">
             <div className={cn(
               "flex flex-col items-center gap-0.5 px-3 py-2 transition-colors",
-              location.startsWith("/trending") ? "text-white" : "text-white/50"
+              location.startsWith("/search") ? "text-white" : "text-white/50"
             )}>
-              <TrendingUp size={21} />
-              <span className="text-[9px] font-medium">Trend</span>
+              <Search size={21} />
+              <span className="text-[9px] font-medium">Search</span>
             </div>
           </Link>
 

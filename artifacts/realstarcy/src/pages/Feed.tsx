@@ -2,8 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Heart, MessageCircle, Share2, Bell, X,
+  Heart, MessageCircle, Share2, Bell, X, Check,
   Home, TrendingUp, Volume2, VolumeX, Camera, User, FlipHorizontal,
+  Music2, Sparkles,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -448,12 +449,39 @@ function EmptyFollowing() {
   );
 }
 
+const CAMERA_FILTERS = [
+  { id: "none",     label: "Original", css: "none" },
+  { id: "beauty",   label: "Beauty",   css: "brightness(1.1) contrast(0.9) saturate(1.2)" },
+  { id: "vivid",    label: "Vivid",    css: "saturate(1.8) contrast(1.1)" },
+  { id: "vintage",  label: "Vintage",  css: "sepia(0.5) contrast(0.9) brightness(0.95)" },
+  { id: "noir",     label: "Noir",     css: "grayscale(1) contrast(1.3)" },
+  { id: "warm",     label: "Warm",     css: "sepia(0.3) saturate(1.3) brightness(1.05)" },
+  { id: "cool",     label: "Cool",     css: "hue-rotate(20deg) saturate(1.2) brightness(1.05)" },
+  { id: "dramatic", label: "Dramatic", css: "contrast(1.4) brightness(0.9) saturate(1.3)" },
+  { id: "glow",     label: "Glow",     css: "brightness(1.15) blur(0.5px) saturate(1.4)" },
+];
+
+const SAMPLE_TRACKS = [
+  { id: "t1", title: "Golden Hour", artist: "Realstarcy Originals", emoji: "🌅" },
+  { id: "t2", title: "Night Drive",  artist: "Studio Beats",         emoji: "🌙" },
+  { id: "t3", title: "Energy",       artist: "Hype Audio",           emoji: "⚡" },
+  { id: "t4", title: "Summer Vibe",  artist: "Chill Collective",     emoji: "☀️" },
+  { id: "t5", title: "Heartbeat",    artist: "Realstarcy Originals", emoji: "💓" },
+];
+
 function CameraModal({ onClose }: { onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("none");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showMusic, setShowMusic] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
+  const [captured, setCaptured] = useState(false);
+
+  const currentFilter = CAMERA_FILTERS.find(f => f.id === activeFilter) ?? CAMERA_FILTERS[0];
 
   const startCamera = useCallback(async (mode: "user" | "environment") => {
     if (streamRef.current) {
@@ -461,29 +489,31 @@ function CameraModal({ onClose }: { onClose: () => void }) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode },
+        video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true,
       });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
       }
       setError(null);
     } catch {
-      setError("Camera access denied. Please allow camera permissions.");
+      setError("Camera access denied. Tap below to create a post with photos instead.");
     }
   }, []);
 
   useEffect(() => {
     startCamera(facingMode);
-    return () => {
-      streamRef.current?.getTracks().forEach(t => t.stop());
-    };
+    return () => { streamRef.current?.getTracks().forEach(t => t.stop()); };
   }, [facingMode, startCamera]);
 
-  const handleFlip = () => {
-    setFacingMode(m => m === "user" ? "environment" : "user");
+  const handleCapture = () => {
+    setCaptured(true);
+    setTimeout(() => setCaptured(false), 200);
   };
+
+  const selectedTrackObj = SAMPLE_TRACKS.find(t => t.id === selectedTrack);
 
   return (
     <motion.div
@@ -494,75 +524,210 @@ function CameraModal({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[200] bg-black"
     >
       {error ? (
-        <div className="flex flex-col items-center justify-center h-full px-8 text-center gap-4">
-          <Camera size={48} className="text-white/30" />
-          <p className="text-white/70 text-sm">{error}</p>
-          <Link href="/create">
-            <button
-              onClick={onClose}
-              className="mt-2 px-6 py-3 bg-[#ff0050] text-white font-bold rounded-xl text-sm"
+        <div className="flex flex-col items-center justify-center h-full px-8 text-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center">
+            <Camera size={36} className="text-white/30" />
+          </div>
+          <div>
+            <p className="text-white font-semibold text-lg mb-1">Camera unavailable</p>
+            <p className="text-white/50 text-sm">{error}</p>
+          </div>
+          <Link href="/create" onClick={onClose}>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              className="px-8 py-3.5 bg-[#ff0050] text-white font-bold rounded-2xl text-sm shadow-lg shadow-[#ff0050]/30"
             >
-              Create Post Instead
-            </button>
+              📸 Create Post with Photo
+            </motion.button>
           </Link>
-          <button onClick={onClose} className="text-white/50 text-sm mt-1">Close</button>
+          <button onClick={onClose} className="text-white/40 text-sm mt-1">Close</button>
         </div>
       ) : (
         <>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 border-2 border-white/5 rounded-none" />
-          </div>
+          {/* Live viewfinder with CSS filter */}
+          <motion.div
+            className="absolute inset-0"
+            animate={captured ? { opacity: 0 } : { opacity: 1 }}
+            transition={{ duration: 0.1 }}
+          >
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+              style={{ filter: currentFilter.css }}
+            />
+          </motion.div>
+
+          {/* Flash effect */}
+          <AnimatePresence>
+            {captured && (
+              <motion.div
+                initial={{ opacity: 0.8 }}
+                animate={{ opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="absolute inset-0 bg-white z-30 pointer-events-none"
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Selected music badge */}
+          <AnimatePresence>
+            {selectedTrackObj && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-24 left-1/2 -translate-x-1/2 z-20 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2"
+              >
+                <span className="text-sm">{selectedTrackObj.emoji}</span>
+                <span className="text-white text-xs font-medium">{selectedTrackObj.title}</span>
+                <span className="text-white/50 text-xs">· {selectedTrackObj.artist}</span>
+                <button onClick={() => setSelectedTrack(null)} className="text-white/50 ml-1">
+                  <X size={12} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Filters strip */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="absolute bottom-44 left-0 right-0 z-20 px-4"
+              >
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {CAMERA_FILTERS.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setActiveFilter(f.id)}
+                      className={cn(
+                        "flex-shrink-0 flex flex-col items-center gap-1.5",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "w-14 h-14 rounded-xl overflow-hidden border-2 transition-all",
+                          activeFilter === f.id ? "border-[#ff0050] scale-110" : "border-white/20"
+                        )}
+                        style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", filter: f.css }}
+                      />
+                      <span className={cn("text-[10px] font-medium", activeFilter === f.id ? "text-[#ff0050]" : "text-white/60")}>
+                        {f.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Music picker */}
+          <AnimatePresence>
+            {showMusic && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="absolute bottom-44 left-4 right-4 z-20 bg-black/80 backdrop-blur-md rounded-2xl p-4"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-white font-semibold text-sm flex items-center gap-2"><Music2 size={14} /> Add Music</p>
+                  <button onClick={() => setShowMusic(false)}><X size={16} className="text-white/60" /></button>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {SAMPLE_TRACKS.map(track => (
+                    <motion.button
+                      key={track.id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => { setSelectedTrack(track.id); setShowMusic(false); }}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left",
+                        selectedTrack === track.id ? "bg-[#ff0050]/20 text-[#ff0050]" : "hover:bg-white/10 text-white"
+                      )}
+                    >
+                      <span className="text-xl">{track.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-tight">{track.title}</p>
+                        <p className="text-xs text-white/50">{track.artist}</p>
+                      </div>
+                      {selectedTrack === track.id && <Check size={14} className="text-[#ff0050]" />}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
 
-      <button
-        onClick={onClose}
-        className="absolute top-12 left-4 z-10 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center"
-      >
-        <X size={20} className="text-white" />
-      </button>
+      {/* Top bar */}
+      <div className="absolute top-0 left-0 right-0 z-20 pt-12 px-4 flex items-center justify-between">
+        <button
+          onClick={onClose}
+          className="w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center"
+        >
+          <X size={20} className="text-white" />
+        </button>
 
-      {!error && (
-        <>
-          <button
-            onClick={handleFlip}
-            className="absolute top-12 right-4 z-10 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center"
-          >
-            <FlipHorizontal size={20} className="text-white" />
-          </button>
-
-          <div className="absolute bottom-16 left-0 right-0 flex flex-col items-center gap-4 z-10">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onPointerDown={() => setRecording(true)}
-              onPointerUp={() => setRecording(false)}
-              onPointerLeave={() => setRecording(false)}
-              className={cn(
-                "w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-all duration-150",
-                recording ? "bg-[#ff0050] scale-95" : "bg-white/10"
-              )}
+        {!error && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowMusic(v => !v); setShowFilters(false); }}
+              className={cn("w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors",
+                showMusic ? "bg-[#ff0050]" : "bg-black/50")}
             >
-              <div className={cn(
-                "rounded-full transition-all duration-150",
-                recording ? "w-8 h-8 bg-[#ff0050] rounded-lg" : "w-14 h-14 bg-white"
-              )} />
-            </motion.button>
-            <p className="text-white/60 text-xs">Hold for video · Tap for photo</p>
-
-            <Link href="/create" onClick={onClose}>
-              <button className="text-white/70 text-sm underline underline-offset-2">
-                Write a post instead
-              </button>
-            </Link>
+              <Music2 size={18} className="text-white" />
+            </button>
+            <button
+              onClick={() => { setShowFilters(v => !v); setShowMusic(false); }}
+              className={cn("w-10 h-10 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors",
+                showFilters ? "bg-[#ff0050]" : "bg-black/50")}
+            >
+              <Sparkles size={18} className="text-white" />
+            </button>
+            <button
+              onClick={() => setFacingMode(m => m === "user" ? "environment" : "user")}
+              className="w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center"
+            >
+              <FlipHorizontal size={18} className="text-white" />
+            </button>
           </div>
-        </>
+        )}
+      </div>
+
+      {/* Bottom controls */}
+      {!error && (
+        <div className="absolute bottom-10 left-0 right-0 z-20 flex flex-col items-center gap-4">
+          {/* Shutter */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onPointerDown={() => setRecording(true)}
+            onPointerUp={() => { setRecording(false); handleCapture(); }}
+            onPointerLeave={() => setRecording(false)}
+            className={cn(
+              "w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-all duration-150 shadow-xl",
+              recording ? "border-[#ff0050]" : "border-white"
+            )}
+          >
+            <div className={cn(
+              "transition-all duration-150 shadow-inner",
+              recording ? "w-9 h-9 bg-[#ff0050] rounded-lg" : "w-15 h-15 bg-white rounded-full w-[60px] h-[60px]"
+            )} />
+          </motion.button>
+          <p className="text-white/50 text-xs tracking-wide">HOLD VIDEO · TAP PHOTO</p>
+
+          <Link href="/create" onClick={onClose}>
+            <button className="text-white/50 text-xs underline underline-offset-4 mt-1">
+              Create text post instead
+            </button>
+          </Link>
+        </div>
       )}
     </motion.div>
   );
@@ -589,16 +754,15 @@ function BottomNav({ onCameraOpen }: { onCameraOpen: () => void }) {
           </div>
         </Link>
 
-        <Link href="/trending">
+        <Link href="/search">
           <div className={cn(
             "flex flex-col items-center gap-0.5 px-3 py-2 transition-colors",
-            location.startsWith("/trending") ? "text-white" : "text-white/50"
+            location.startsWith("/search") ? "text-white" : "text-white/50"
           )}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-              <polyline points="16 7 22 7 22 13" />
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <span className="text-[9px] font-medium">Trend</span>
+            <span className="text-[9px] font-medium">Search</span>
           </div>
         </Link>
 

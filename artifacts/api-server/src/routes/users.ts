@@ -8,6 +8,9 @@ const router = Router();
 
 const DEFAULT_CURRENT_USER_ID = 1;
 
+const CELEBRITY_FOLLOWER_BONUS: Record<number, number> = { 1: 3000000 };
+const CELEBRITY_LOVE_BONUS: Record<number, number> = { 1: 10000000 };
+
 async function getFollowCounts(userId: number) {
   const [followerRow] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
@@ -18,7 +21,7 @@ async function getFollowCounts(userId: number) {
     .from(followsTable)
     .where(eq(followsTable.followerId, userId));
   return {
-    followerCount: followerRow?.count ?? 0,
+    followerCount: (followerRow?.count ?? 0) + (CELEBRITY_FOLLOWER_BONUS[userId] ?? 0),
     followingCount: followingRow?.count ?? 0,
   };
 }
@@ -54,6 +57,14 @@ router.put("/users/me", async (req, res) => {
   if (parsed.data.displayName !== undefined) updates.displayName = parsed.data.displayName;
   if (parsed.data.bio !== undefined) updates.bio = parsed.data.bio;
   if (parsed.data.avatar !== undefined) updates.avatar = parsed.data.avatar;
+  if (parsed.data.username !== undefined) {
+    const slug = parsed.data.username.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 30);
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.username, slug)).limit(1);
+    if (existing && existing.id !== currentUserId) {
+      res.status(409).json({ error: "Username taken" }); return;
+    }
+    updates.username = slug;
+  }
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, currentUserId)).returning();
   const { followerCount, followingCount } = await getFollowCounts(updated.id);

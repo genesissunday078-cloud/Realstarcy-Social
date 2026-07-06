@@ -1,0 +1,1 @@
+- [Realstarcy app architecture](realstarcy-arch.md) — key DB schema, API patterns, brand color, and celebrity account conventions

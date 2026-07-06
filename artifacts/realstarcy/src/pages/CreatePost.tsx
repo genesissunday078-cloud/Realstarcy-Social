@@ -285,7 +285,7 @@ export default function CreatePost() {
         </motion.form>
 
         <p className="text-xs text-muted-foreground text-center mt-6">
-          Realstarcy is for real moments. No filters. No performance.
+          Share your moment with the world ✨
         </p>
       </div>
     </>

@@ -14,6 +14,7 @@ import CreatorEarnings from "@/pages/CreatorEarnings";
 import GoLive from "@/pages/GoLive";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
+import SearchPage from "@/pages/Search";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +36,7 @@ function Router() {
             <Route path="/profile/:username" component={Profile} />
             <Route path="/notifications" component={Notifications} />
             <Route path="/settings" component={Settings} />
+            <Route path="/search" component={SearchPage} />
             <Route path="/creator-earnings" component={CreatorEarnings} />
             <Route path="/go-live" component={GoLive} />
             <Route component={NotFound} />
