@@ -63,14 +63,16 @@ export default function CreatePost() {
   };
 
   const handleCameraPost = async (file: File, _filter: string) => {
+    setMediaPreview(URL.createObjectURL(file));
+    setMediaType(file.type.startsWith("image/") ? "image" : "video");
     setUploading(true);
     try {
       const data = await uploadFile(file);
       setMediaUrl(data.url);
-      setMediaType("video");
-      setMediaPreview(URL.createObjectURL(file));
+      setMediaType(data.type);
     } catch {
-      /* silent */
+      setMediaPreview("");
+      setMediaType(null);
     } finally {
       setUploading(false);
     }

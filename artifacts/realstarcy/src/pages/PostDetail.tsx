@@ -7,6 +7,7 @@ import {
   useCreateComment,
   useDeleteComment,
   useGetMe,
+  useGetFeed,
   getGetCommentsQueryKey,
   getGetPostQueryKey,
   getGetFeedQueryKey,
@@ -17,7 +18,7 @@ import PostCard from "@/components/PostCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -38,6 +39,16 @@ export default function PostDetail() {
     query: { enabled: !!postId, queryKey: getGetCommentsQueryKey(postId) },
   });
   const { data: me } = useGetMe();
+
+  // Load feed to find prev/next post — use params in key for isolated cache
+  const { data: feedData } = useGetFeed(
+    { limit: 100 },
+    { query: { queryKey: getGetFeedQueryKey({ limit: 100 }) } }
+  );
+  const feedPosts = feedData?.posts ?? [];
+  const currentIndex = feedPosts.findIndex(p => p.id === postId);
+  const prevPost = currentIndex > 0 ? feedPosts[currentIndex - 1] : null;
+  const nextPost = currentIndex !== -1 && currentIndex < feedPosts.length - 1 ? feedPosts[currentIndex + 1] : null;
 
   const createComment = useCreateComment({
     mutation: {
@@ -68,13 +79,43 @@ export default function PostDetail() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <button
-        onClick={() => navigate("/")}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back
-      </button>
+      {/* Back + Post Navigation */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+
+        {/* Prev / Next post navigation */}
+        {feedPosts.length > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => prevPost && navigate(`/post/${prevPost.id}`)}
+              disabled={!prevPost}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Previous post"
+            >
+              <ChevronUp size={14} />
+              Prev
+            </button>
+            <span className="text-muted-foreground text-xs">
+              {currentIndex !== -1 ? `${currentIndex + 1} / ${feedPosts.length}` : ""}
+            </span>
+            <button
+              onClick={() => nextPost && navigate(`/post/${nextPost.id}`)}
+              disabled={!nextPost}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Next post"
+            >
+              Next
+              <ChevronDown size={14} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {postLoading ? (
         <div className="bg-card border border-card-border rounded-xl p-5 mb-6">
@@ -92,6 +133,42 @@ export default function PostDetail() {
       ) : (
         <div className="text-center py-16">
           <p className="text-muted-foreground font-serif text-lg">Moment not found.</p>
+        </div>
+      )}
+
+      {/* Adjacent post quick-previews */}
+      {feedPosts.length > 1 && (prevPost || nextPost) && (
+        <div className="flex gap-3 mb-8">
+          {prevPost && (
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate(`/post/${prevPost.id}`)}
+              className="flex-1 bg-card border border-card-border rounded-xl p-3 text-left hover:border-primary/20 transition-colors group"
+            >
+              <p className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
+                <ChevronUp size={10} /> Previous
+              </p>
+              <p className="text-xs text-foreground/80 line-clamp-2 group-hover:text-foreground transition-colors">
+                {prevPost.content}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">@{prevPost.author.username}</p>
+            </motion.button>
+          )}
+          {nextPost && (
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate(`/post/${nextPost.id}`)}
+              className="flex-1 bg-card border border-card-border rounded-xl p-3 text-left hover:border-primary/20 transition-colors group"
+            >
+              <p className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
+                Next <ChevronDown size={10} />
+              </p>
+              <p className="text-xs text-foreground/80 line-clamp-2 group-hover:text-foreground transition-colors">
+                {nextPost.content}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">@{nextPost.author.username}</p>
+            </motion.button>
+          )}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, RotateCcw, Loader2 } from "lucide-react";
+import { X, RotateCcw, Loader2, Camera, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FILTERS = [
@@ -18,16 +18,11 @@ const FILTERS = [
   { name: "Film", css: "sepia(.2) contrast(1.1)" },
   { name: "Soft", css: "brightness(1.05) contrast(.9)" },
   { name: "Sharp", css: "contrast(1.4)" },
-  { name: "Cool", css: "hue-rotate(200deg) saturate(1.2)" },
   { name: "Vintage", css: "sepia(.6)" },
   { name: "Noir", css: "grayscale(1) contrast(1.5)" },
   { name: "Retro", css: "sepia(.3) hue-rotate(-20deg)" },
   { name: "Aesthetic", css: "saturate(1.3) brightness(1.05)" },
   { name: "Glow", css: "brightness(1.2) contrast(.9)" },
-  { name: "Contrast", css: "contrast(1.6)" },
-  { name: "Pop", css: "saturate(1.8) contrast(1.2)" },
-  { name: "Grain", css: "contrast(1.1) brightness(.98)" },
-  { name: "Dream", css: "brightness(1.15) saturate(.8) hue-rotate(10deg)" },
   { name: "Gold", css: "sepia(.7) saturate(1.4) brightness(1.1)" },
 ];
 
@@ -38,21 +33,16 @@ const TEMPLATES = [
   { name: "Tilt +", style: { transform: "rotate(2deg) scale(1.04)" } },
   { name: "Tilt –", style: { transform: "rotate(-2deg) scale(1.04)" } },
   { name: "Mirror", style: { transform: "scaleX(-1)" } },
-  { name: "Warp", style: { transform: "skewX(3deg)" } },
   { name: "Wide", style: { transform: "scaleX(1.08)" } },
   { name: "Tall", style: { transform: "scaleY(1.08)" } },
-  { name: "Invert", style: { filter: "invert(.12)" } },
-  { name: "Vivid", style: { filter: "saturate(2) brightness(1.05)" } },
   { name: "Matte", style: { filter: "contrast(.85) brightness(1.1)" } },
-  { name: "Faded", style: { opacity: 0.88 } },
   { name: "Bold", style: { filter: "contrast(1.5) saturate(1.3)" } },
   { name: "Pastel", style: { filter: "saturate(.5) brightness(1.2)" } },
   { name: "Cinema", style: { filter: "contrast(1.2) brightness(.92) sepia(.15)" } },
-  { name: "Lo-fi", style: { filter: "contrast(1.1) saturate(1.4) brightness(.97)" } },
-  { name: "Haze", style: { filter: "brightness(1.3) contrast(.8)" } },
   { name: "Chrome", style: { filter: "saturate(1.6) contrast(1.15)" } },
-  { name: "Dusk", style: { filter: "sepia(.4) hue-rotate(-20deg) brightness(.95)" } },
 ];
+
+type CameraMode = "photo" | "video";
 
 interface CameraModalProps {
   isOpen: boolean;
@@ -62,16 +52,20 @@ interface CameraModalProps {
 
 export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
   const [recording, setRecording] = useState(false);
-  const [recorded, setRecorded] = useState<Blob | null>(null);
-  const [recordedUrl, setRecordedUrl] = useState("");
+  const [captured, setCaptured] = useState<Blob | null>(null);
+  const [capturedUrl, setCapturedUrl] = useState("");
+  const [capturedType, setCapturedType] = useState<"photo" | "video">("photo");
   const [activeFilter, setActiveFilter] = useState(0);
   const [activeTemplate, setActiveTemplate] = useState(0);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [cameraError, setCameraError] = useState("");
   const [posting, setPosting] = useState(false);
+  const [mode, setMode] = useState<CameraMode>("photo");
+  const [flash, setFlash] = useState(false);
   const chunksRef = useRef<Blob[]>([]);
 
   const startCamera = useCallback(async (facing: "environment" | "user") => {
@@ -90,12 +84,13 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
     } catch {
       setCameraError("Camera access denied. Allow camera permission and try again.");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
   useEffect(() => {
     if (isOpen) {
-      setRecorded(null);
-      setRecordedUrl("");
+      setCaptured(null);
+      setCapturedUrl("");
       setRecording(false);
       setActiveFilter(0);
       setActiveTemplate(0);
@@ -113,6 +108,62 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
     await startCamera(next);
   };
 
+  // === PHOTO SNAP ===
+  const snapPhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 1080;
+    canvas.height = video.videoHeight || 1920;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Build combined filter: CSS filter from FILTERS + any template filter
+    const templateFilter = TEMPLATES[activeTemplate].style.filter as string | undefined;
+    const baseFilter = FILTERS[activeFilter].css;
+    const combined = [baseFilter, templateFilter].filter(Boolean).join(" ");
+    ctx.filter = combined || "none";
+
+    // Apply template transforms by saving/restoring context
+    const tStyle = TEMPLATES[activeTemplate].style;
+    ctx.save();
+    // Mirror for front camera
+    if (facingMode === "user") {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    // Apply scale/rotate transforms from template (approximated — CSS transforms)
+    const transform = tStyle.transform as string | undefined;
+    if (transform) {
+      // Parse simple scale/rotate from template transform string
+      const scaleMatch = transform.match(/scale\(([^)]+)\)/);
+      const rotateMatch = transform.match(/rotate\(([^)]+)deg\)/);
+      const scaleXMatch = transform.match(/scaleX\(([^)]+)\)/);
+      const scaleYMatch = transform.match(/scaleY\(([^)]+)\)/);
+      if (scaleMatch) { const s = parseFloat(scaleMatch[1]); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(s, s); ctx.translate(-canvas.width/2, -canvas.height/2); }
+      if (rotateMatch) { const r = parseFloat(rotateMatch[1]) * Math.PI / 180; ctx.translate(canvas.width/2, canvas.height/2); ctx.rotate(r); ctx.translate(-canvas.width/2, -canvas.height/2); }
+      if (scaleXMatch) { const s = parseFloat(scaleXMatch[1]); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(s, 1); ctx.translate(-canvas.width/2, -canvas.height/2); }
+      if (scaleYMatch) { const s = parseFloat(scaleYMatch[1]); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(1, s); ctx.translate(-canvas.width/2, -canvas.height/2); }
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
+    // Flash effect
+    setFlash(true);
+    setTimeout(() => setFlash(false), 200);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      setCaptured(blob);
+      setCapturedType("photo");
+      const url = URL.createObjectURL(blob);
+      setCapturedUrl(url);
+      // Pause stream preview
+      if (videoRef.current) videoRef.current.pause();
+    }, "image/jpeg", 0.92);
+  };
+
+  // === VIDEO RECORD ===
   const toggleRecord = () => {
     if (!stream) return;
     if (recording && recorder) {
@@ -127,9 +178,10 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
       rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       rec.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "video/webm" });
-        setRecorded(blob);
+        setCaptured(blob);
+        setCapturedType("video");
         const url = URL.createObjectURL(blob);
-        setRecordedUrl(url);
+        setCapturedUrl(url);
         if (videoRef.current) {
           videoRef.current.srcObject = null;
           videoRef.current.src = url;
@@ -145,8 +197,8 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
   };
 
   const retake = () => {
-    setRecorded(null);
-    setRecordedUrl("");
+    setCaptured(null);
+    setCapturedUrl("");
     if (videoRef.current) {
       videoRef.current.src = "";
       videoRef.current.srcObject = stream;
@@ -157,9 +209,11 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
   };
 
   const handlePost = async () => {
-    if (!recorded) return;
+    if (!captured) return;
     setPosting(true);
-    const file = new File([recorded], "video.webm", { type: "video/webm" });
+    const ext = capturedType === "photo" ? "jpg" : "webm";
+    const mime = capturedType === "photo" ? "image/jpeg" : "video/webm";
+    const file = new File([captured], `capture.${ext}`, { type: mime });
     await onPost(file, FILTERS[activeFilter].name);
     setPosting(false);
     onClose();
@@ -180,15 +234,41 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[200] bg-black flex flex-col"
         >
-          {/* Video preview */}
+          {/* Hidden canvas for photo capture */}
+          <canvas ref={canvasRef} className="hidden" />
+
+          {/* Flash effect */}
+          <AnimatePresence>
+            {flash && (
+              <motion.div
+                key="flash"
+                initial={{ opacity: 0.8 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-white z-50 pointer-events-none"
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Video / Photo preview */}
           <div className="flex-1 relative overflow-hidden">
+            {/* Live viewfinder */}
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              className="w-full h-full object-cover"
-              style={combinedStyle}
+              className={cn("w-full h-full object-cover", captured && capturedType === "photo" ? "hidden" : "")}
+              style={captured ? undefined : combinedStyle}
             />
+
+            {/* Captured photo preview */}
+            {captured && capturedType === "photo" && capturedUrl && (
+              <img
+                src={capturedUrl}
+                alt="Captured"
+                className="w-full h-full object-cover"
+              />
+            )}
 
             {/* Recording indicator */}
             {recording && (
@@ -210,12 +290,12 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
               <button onClick={onClose} className="w-9 h-9 bg-black/50 rounded-full flex items-center justify-center">
                 <X size={18} className="text-white" />
               </button>
-              {!recorded && (
+              {!captured && (
                 <button onClick={flipCamera} className="w-9 h-9 bg-black/50 rounded-full flex items-center justify-center">
                   <RotateCcw size={16} className="text-white" />
                 </button>
               )}
-              {recorded && (
+              {captured && (
                 <button onClick={retake} className="text-white text-sm font-semibold bg-black/50 px-3 py-1.5 rounded-full">
                   Retake
                 </button>
@@ -223,58 +303,99 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
             </div>
           </div>
 
-          {/* Filters row */}
+          {/* Bottom controls */}
           <div className="bg-black flex-shrink-0">
-            <div className="flex overflow-x-auto gap-2 px-3 py-2 no-scrollbar">
-              {FILTERS.map((f, i) => (
+            {/* Mode toggle — only show when not captured and not recording */}
+            {!captured && !recording && (
+              <div className="flex justify-center gap-6 pt-3 pb-1">
                 <button
-                  key={f.name}
-                  onClick={() => setActiveFilter(i)}
+                  onClick={() => setMode("photo")}
                   className={cn(
-                    "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
-                    activeFilter === i
-                      ? "bg-primary text-black border-primary"
-                      : "bg-zinc-900 text-white/70 border-zinc-700"
+                    "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all",
+                    mode === "photo" ? "bg-primary text-black" : "text-white/50"
                   )}
                 >
-                  {f.name}
+                  <Camera size={13} /> Photo
                 </button>
-              ))}
-            </div>
-
-            {/* Templates row */}
-            <div className="flex overflow-x-auto gap-2 px-3 pb-2 no-scrollbar">
-              {TEMPLATES.map((t, i) => (
                 <button
-                  key={t.name}
-                  onClick={() => setActiveTemplate(i)}
+                  onClick={() => setMode("video")}
                   className={cn(
-                    "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
-                    activeTemplate === i
-                      ? "bg-teal-400 text-black border-teal-400"
-                      : "bg-zinc-900 text-white/60 border-zinc-700"
+                    "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all",
+                    mode === "video" ? "bg-red-500 text-white" : "text-white/50"
                   )}
                 >
-                  {t.name}
+                  <Video size={13} /> Video
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
 
-            {/* Record / Post bar */}
+            {/* Filters row */}
+            {!captured && (
+              <div className="flex overflow-x-auto gap-2 px-3 py-2 no-scrollbar">
+                {FILTERS.map((f, i) => (
+                  <button
+                    key={f.name}
+                    onClick={() => setActiveFilter(i)}
+                    className={cn(
+                      "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                      activeFilter === i
+                        ? "bg-primary text-black border-primary"
+                        : "bg-zinc-900 text-white/70 border-zinc-700"
+                    )}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Templates row — only for photo mode */}
+            {!captured && mode === "photo" && (
+              <div className="flex overflow-x-auto gap-2 px-3 pb-2 no-scrollbar">
+                {TEMPLATES.map((t, i) => (
+                  <button
+                    key={t.name}
+                    onClick={() => setActiveTemplate(i)}
+                    className={cn(
+                      "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                      activeTemplate === i
+                        ? "bg-teal-400 text-black border-teal-400"
+                        : "bg-zinc-900 text-white/60 border-zinc-700"
+                    )}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Shutter / Post button */}
             <div className="flex items-center justify-center gap-8 py-5">
-              {!recorded ? (
-                <motion.button
-                  onClick={toggleRecord}
-                  whileTap={{ scale: 0.9 }}
-                  className={cn(
-                    "w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all",
-                    recording
-                      ? "bg-red-600 border-red-400"
-                      : "bg-white border-red-500"
-                  )}
-                >
-                  {recording && <span className="w-5 h-5 rounded bg-white" />}
-                </motion.button>
+              {!captured ? (
+                mode === "photo" ? (
+                  // Photo snap button
+                  <motion.button
+                    onClick={snapPhoto}
+                    whileTap={{ scale: 0.88 }}
+                    className="w-16 h-16 rounded-full border-4 border-white bg-white/10 flex items-center justify-center"
+                  >
+                    <Camera size={26} className="text-white" />
+                  </motion.button>
+                ) : (
+                  // Video record button
+                  <motion.button
+                    onClick={toggleRecord}
+                    whileTap={{ scale: 0.9 }}
+                    className={cn(
+                      "w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all",
+                      recording
+                        ? "bg-red-600 border-red-400"
+                        : "bg-white border-red-500"
+                    )}
+                  >
+                    {recording && <span className="w-5 h-5 rounded bg-white" />}
+                  </motion.button>
+                )
               ) : (
                 <motion.button
                   onClick={handlePost}
