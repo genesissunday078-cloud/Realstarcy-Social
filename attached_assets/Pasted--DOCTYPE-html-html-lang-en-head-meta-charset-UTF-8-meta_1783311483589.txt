@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realstarcy - The LifeVerse</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family: sans-serif; }
+  body { background: #000; color: #fff; height: 100vh; overflow: hidden; }
+  .view { display: none; height: 100vh; width: 100%; position: absolute; top: 0; left: 0; padding-bottom: 70px; overflow-y: auto; }
+  .active { display: block; }
+  
+  nav { position: fixed; bottom: 0; width: 100%; height: 60px; background: #111; display: flex; justify-content: space-around; align-items: center; z-index: 100; border-top: 1px solid #333; }
+  .btn { background: none; border: none; color: #fff; font-size: 14px; cursor: pointer; }
+  .plus-btn { background: #ff0050; width: 40px; height: 40px; border-radius: 50%; border: none; color: white; font-size: 20px; cursor: pointer; }
+  
+  /* Home & Feed Styles */
+  .top-tabs { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #333; background: #000; position: sticky; top: 0; z-index: 50; }
+  .feed { padding: 10px; }
+  .video-card { height: 65vh; background: #222; border-radius: 12px; margin-bottom: 20px; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border: 1px solid #333; position: relative; user-select: none; overflow: hidden; }
+  .video-placeholder { flex-grow: 1; display: flex; align-items: center; justify-content: center; color: #555; font-size: 16px; font-weight: bold; }
+  .video-card-text { z-index: 10; width: 80%; }
+  .video-card h3 { font-size: 16px; margin-bottom: 5px; text-shadow: 1px 1px 3px #000; }
+  .video-card p { font-size: 14px; color: #ddd; text-shadow: 1px 1px 3px #000; }
+  
+  /* Actions */
+  .actions { position: absolute; right: 15px; bottom: 20px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 10; }
+  .action-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
+  .action-btn span { font-size: 12px; font-weight: bold; }
+  .liked { color: #ff0050; }
+  
+  /* Ad/Trending Styles */
+  .ad-card { border: 1px solid #ff0050; background: #111; }
+  .ad-badge { position: absolute; top: 20px; left: 20px; background: #ff0050; font-size: 10px; padding: 3px 6px; border-radius: 3px; font-weight: bold; z-index: 10; }
+  .buy-btn { margin-top: 15px; width: 100%; padding: 10px; background: #ff0050; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+  .trend-card { background: #111; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 3px solid #fff; }
+  
+  /* Profile Styles */
+  .profile-container { padding: 20px; text-align: center; }
+  .avatar-circle { width: 100px; height: 100px; background: #333; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; border: 2px solid #ff0050; }
+  .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .stats-row { display: flex; justify-content: center; gap: 30px; margin: 20px 0; }
+  .bio-box { color: #aaa; font-size: 14px; margin-bottom: 20px; padding: 10px; border: 1px dashed #333; }
+  .post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .post-item { aspect-ratio: 1; background: #222; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; border: 1px solid #000; }
+  
+  /* Modal */
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 300; padding: 40px; }
+  .input-field { width: 100%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 5px; }
+
+  /* Animations */
+  @keyframes popHeart { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+  .heart-animation { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); font-size: 100px; pointer-events: none; z-index: 50; }
+  .animate-heart { animation: popHeart 0.8s ease-out forwards; }
+  
+  #cam-view { display: none; position: fixed; inset: 0; z-index: 200; background: #000; }
+  video { width: 100%; height: 100%; object-fit: cover; }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="view active">
+  <div class="top-tabs">
+    <button id="btn-realstarcy" class="btn" style="color:#888;" onclick="showFeed('realstarcy-content')">Realstarcy</button>
+    <button id="btn-following" class="btn" style="color:#888;" onclick="showFeed('following-content')">Following</button>
+    <button id="btn-foryou" class="btn" style="font-weight:bold; color:#fff;" onclick="showFeed('foryou-content')">For You</button>
+  </div>
+  
+  <div id="realstarcy-content" class="feed" style="display:none;">
+    <div class="video-card ad-card" ondblclick="doubleClickLike(this)">
+      <div class="ad-badge">SPONSORED</div>
+      <div class="video-placeholder">[Godfather Solar Visuals]</div>
+      <div class="video-card-text" style="width:100%;">
+        <h3>Godfather Solar</h3>
+        <button class="buy-btn">Shop Now</button>
+      </div>
+      <div class="actions" style="bottom: 80px;">
+         <button class="action-btn like-btn" onclick="likeVideo(this)">🤍 <span class="like-count">8,402</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="following-content" class="feed" style="display:none;">
+    <div class="video-card" ondblclick="doubleClickLike(this)">
+       <div class="video-placeholder"></div>
+       <div class="video-card-text"><h3>@KNG_EMPEROR</h3></div>
+       <div class="actions">
+         <button class="action-btn like-btn" onclick="likeVideo(this)">🤍 <span class="like-count">342</span></button>
+       </div>
+    </div>
+  </div>
+
+  <div id="foryou-content" class="feed" style="display:block;">
+    <div class="video-card" ondblclick="doubleClickLike(this)">
+       <div class="video-placeholder"></div>
+       <div class="video-card-text"><h3>@ArcaniOfVibe</h3></div>
+       <div class="actions">
+         <button class="action-btn like-btn" onclick="likeVideo(this)">🤍 <span class="like-count">1,205</span></button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRENDING -->
+<div id="trending" class="view">
+  <h2 style="text-align:center; padding: 20px 0;">Top Trends</h2>
+  <div style="padding: 10px;">
+    <div class="trend-card"><h4>#AfroFusion</h4></div>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div id="notifs" class="view"><h2 style="text-align:center; padding-top:20px;">Alerts</h2></div>
+
+<!-- PROFILE -->
+<div id="profile" class="view">
+  <div class="profile-container">
+    <div class="avatar-circle" onclick="document.getElementById('imgInput').click()">
+      <img id="avatar" src="" alt="Avatar">
+      <input type="file" id="imgInput" hidden accept="image/*" onchange="uploadAvatar(event)">
+    </div>
+    <h2 id="viewName">Genesis</h2>
+    <p id="viewHandle" style="color: #ff0050;">@Genedino</p>
+    <p id="viewBio" class="bio-box">Musician, Artisan & Engineer</p>
+    <div class="stats-row">
+      <div><strong>24</strong><br><small>Following</small></div>
+      <div><strong>1.2M</strong><br><small>Followers</small></div>
+      <div><strong>150K</strong><br><small>Likes</small></div>
+    </div>
+    <button onclick="document.getElementById('editModal').style.display='block'" style="background:#ff0050; border:none; color:white; padding:10px 30px; border-radius:5px; font-weight:bold;">Edit Profile</button>
+  </div>
+  <div class="post-grid">
+    <div class="post-item">Post 1</div><div class="post-item">Post 2</div><div class="post-item">Post 3</div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="editModal" class="modal">
+  <h3>Edit Account</h3>
+  <input type="text" id="inName" class="input-field" placeholder="Name">
+  <input type="text" id="inHandle" class="input-field" placeholder="Nickname">
+  <textarea id="inBio" class="input-field" placeholder="Bio"></textarea>
+  <button onclick="saveProfile()" style="width:100%; padding:15px; background:#ff0050; color:white; border:none; border-radius:5px;">Save</button>
+  <button onclick="document.getElementById('editModal').style.display='none'" style="width:100%; padding:15px; background:transparent; border:none; color:#ff0050;">Cancel</button>
+</div>
+
+<nav>
+  <button class="btn" onclick="show('home')">Home</button>
+  <button class="btn" onclick="show('trending')">Trend</button>
+  <button class="plus-btn" onclick="openCam()">+</button>
+  <button class="btn" onclick="show('notifs')">Alerts</button>
+  <button class="btn" onclick="show('profile')">Me</button>
+</nav>
+
+<div id="cam-view">
+  <button style="position:absolute; top:20px; left:20px; z-index:210; padding:10px; background:#111; color:#fff; border:none;" onclick="closeCam()">✕</button>
+  <video id="v" autoplay playsinline muted></video>
+</div>
+
+<script>
+  function show(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+  
+  // Tabs & Swipe
+  const feedsList = ['realstarcy-content', 'following-content', 'foryou-content'];
+  const tabBtns = ['btn-realstarcy', 'btn-following', 'btn-foryou'];
+  let currentFeedIndex = 2;
+  function showFeed(id) { 
+    currentFeedIndex = feedsList.indexOf(id);
+    document.querySelectorAll('.feed').forEach(f => f.style.display = 'none'); 
+    document.getElementById(id).style.display = 'block'; 
+  }
+
+  // Like System
+  function likeVideo(btn) {
+    btn.classList.toggle('liked');
+    let countSpan = btn.querySelector('.like-count');
+    let val = parseInt(countSpan.innerText.replace(/,/g, ''));
+    countSpan.innerText = (btn.classList.contains('liked') ? val + 1 : val - 1).toLocaleString();
+    btn.innerHTML = (btn.classList.contains('liked') ? '❤️ ' : '🤍 ') + '<span class="like-count">' + countSpan.innerText + '</span>';
+  }
+  function doubleClickLike(card) {
+    let likeBtn = card.querySelector('.like-btn');
+    if (likeBtn && !likeBtn.classList.contains('liked')) likeVideo(likeBtn);
+    let heart = document.createElement('div');
+    heart.className = 'heart-animation animate-heart'; heart.innerHTML = '❤️';
+    card.appendChild(heart); setTimeout(() => heart.remove(), 800);
+  }
+
+  // Profile Logic
+  function uploadAvatar(e) { const reader = new FileReader(); reader.onload = function() { document.getElementById('avatar').src = reader.result; }; reader.readAsDataURL(e.target.files[0]); }
+  function saveProfile() {
+    document.getElementById('viewName').innerText = document.getElementById('inName').value || 'Genesis';
+    document.getElementById('viewHandle').innerText = '@' + (document.getElementById('inHandle').value || 'Genedino');
+    document.getElementById('viewBio').innerText = document.getElementById('inBio').value || 'Musician, Artisan & Engineer';
+    document.getElementById('editModal').style.display = 'none';
+  }
+
+  // Camera
+  async function openCam() { document.getElementById('cam-view').style.display = 'block'; try { const s = await navigator.mediaDevices.getUserMedia({video: true, audio: true}); document.getElementById('v').srcObject = s; } catch(e) { alert("Camera access needed"); } }
+  function closeCam() { document.getElementById('cam-view').style.display = 'none'; const s = document.getElementById('v').srcObject; if(s) s.getTracks().forEach(t => t.stop()); }
+</script>
+</body>
+</html>
