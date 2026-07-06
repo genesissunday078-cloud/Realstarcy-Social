@@ -109,6 +109,15 @@
   --ring: 38 92% 50%;
 }
 
+/* Hide scrollbars everywhere — keep scroll behaviour, lose the track line */
+* {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / Edge */
+}
+*::-webkit-scrollbar {
+  display: none;                /* Chrome / Safari / Opera */
+}
+
 @layer base {
   * {
     @apply border-border;

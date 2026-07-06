@@ -174,28 +174,34 @@ export default function CameraModal({ isOpen, onClose, onPost }: CameraModalProp
       setRecording(false);
     } else {
       chunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-        ? "video/webm;codecs=vp9"
-        : "video/webm";
+
+      // Pick best supported codec
+      const mimeType = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+      ].find(t => MediaRecorder.isTypeSupported(t)) ?? "video/webm";
+
       const rec = new MediaRecorder(stream, { mimeType });
+
+      // timeslice=100ms keeps data flowing even for short clips
       rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+
       rec.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        if (chunksRef.current.length === 0) return; // nothing recorded
+        const blob = new Blob(chunksRef.current, { type: mimeType.split(";")[0] });
+        const url = URL.createObjectURL(blob);
+        // Set state — review stage video element renders with autoPlay
         setCapturedRaw(blob);
         setCapturedType("video");
-        setEditTab("filters"); // effects tab hidden for video — always land on filters
-        const url = URL.createObjectURL(blob);
+        setEditTab("filters");
         setCapturedUrl(url);
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-          videoRef.current.src = url;
-          videoRef.current.muted = false;
-          videoRef.current.loop = true;
-          videoRef.current.play();
-        }
         setStage("review");
       };
-      rec.start();
+
+      rec.start(100); // collect chunks every 100 ms
       setRecorder(rec);
       setRecording(true);
     }

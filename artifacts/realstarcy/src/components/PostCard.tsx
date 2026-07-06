@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Trash2 } from "lucide-react";
@@ -41,13 +41,16 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
   const [loveCount, setLoveCount] = useState(post.loveCount);
   const [loveBurst, setLoveBurst] = useState(false);
   const [bigHeart, setBigHeart] = useState(false);
-  const lastTapRef = useRef(0);
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetPostQueryKey(post.id) });
-    queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+  // Refresh feed counts in the background after love/unlove — delayed so
+  // the refetch doesn't trigger a layout re-animation that makes the card vanish.
+  const invalidateLazy = () => {
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetPostQueryKey(post.id) });
+      queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });
+    }, 1500);
   };
 
   const loveMutation = useLovePost({
@@ -55,7 +58,7 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
       onSuccess: (data) => {
         setLoveCount(data.loveCount);
         setIsLoved(data.isLoved);
-        invalidate();
+        invalidateLazy();
       },
     },
   });
@@ -65,7 +68,7 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
       onSuccess: (data) => {
         setLoveCount(data.loveCount);
         setIsLoved(data.isLoved);
-        invalidate();
+        invalidateLazy();
       },
     },
   });
@@ -82,6 +85,8 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
 
   const doLove = () => {
     if (!isLoved) {
+      setIsLoved(true);
+      setLoveCount(c => c + 1);
       setLoveBurst(true);
       setTimeout(() => setLoveBurst(false), 600);
       loveMutation.mutate({ id: post.id });
@@ -91,21 +96,20 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
   const handleLoveButton = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isLoved) {
+      setIsLoved(false);
+      setLoveCount(c => Math.max(0, c - 1));
       unloveMutation.mutate({ id: post.id });
     } else {
       doLove();
     }
   };
 
-  const handleContentTap = (e: React.MouseEvent) => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      e.preventDefault();
-      doLove();
-      setBigHeart(true);
-      setTimeout(() => setBigHeart(false), 800);
-    }
-    lastTapRef.current = now;
+  // True double-click / double-tap to love — no ref timer needed
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    doLove();
+    setBigHeart(true);
+    setTimeout(() => setBigHeart(false), 800);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -119,7 +123,6 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
 
   return (
     <motion.article
-      layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-card border border-card-border rounded-xl p-5 hover:border-primary/20 transition-colors"
@@ -152,10 +155,10 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
         )}
       </div>
 
-      {/* Content — double-tap/double-click to love */}
-      <div className="relative cursor-pointer" onClick={handleContentTap}>
-        <Link href={`/post/${post.id}`} onClick={(e) => { if (Date.now() - lastTapRef.current < 20) e.preventDefault(); }}>
-          <div>
+      {/* Content — double-click / double-tap to love */}
+      <div className="relative" onDoubleClick={handleDoubleClick}>
+        <Link href={`/post/${post.id}`}>
+          <div className="cursor-pointer">
             <p className="text-sm leading-relaxed text-foreground/90 mb-3">{post.content}</p>
             {post.imageUrl && (
               <div className="rounded-lg overflow-hidden mb-3 aspect-video bg-secondary">
