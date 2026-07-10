@@ -10,7 +10,7 @@ A social media platform built on authenticity — share real moments, star what 
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` (Replit-managed), `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` (Replit-managed Clerk, provisioned automatically)
 
 ## Stack
 
@@ -34,7 +34,7 @@ A social media platform built on authenticity — share real moments, star what 
 
 - **No follower counts displayed** — intentional product decision to reduce social anxiety
 - **Stars instead of likes** — terminology enforced throughout UI and API
-- **Default current user is user ID 1** — no auth system yet; all routes assume `maya_real`
+- **Clerk auth** — Replit-managed Clerk provisioned; frontend wired with `ClerkProvider`, sign-in/sign-up pages, and `requireAuth` middleware on protected routes
 - **OpenAPI-first** — all API contracts defined in `openapi.yaml`, hooks and Zod schemas generated via Orval
 - **Feed is chronological** — no algorithm, posts sorted by `createdAt DESC`
 
@@ -57,7 +57,6 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - Run `pnpm --filter @workspace/api-spec run codegen` after every OpenAPI spec change
 - After codegen, always run `pnpm run typecheck:libs` before checking artifact typechecks
-- The `DEFAULT_CURRENT_USER_ID = 1` in all route files — add auth later to replace this
 - Google Fonts `@import url(...)` must be the FIRST line in `index.css` (before Tailwind imports)
 
 ## Pointers
