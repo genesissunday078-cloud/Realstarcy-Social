@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import type { Post } from "@workspace/api-client-react";
 
 interface PostCardProps {
@@ -36,7 +37,8 @@ function formatDate(dateStr: string) {
 
 export default function PostCard({ post, showActions = true }: PostCardProps) {
   const queryClient = useQueryClient();
-  const { data: me } = useGetMe();
+  const { guard, isSignedIn } = useAuthGuard();
+  const { data: me } = useGetMe({ query: { enabled: isSignedIn } });
   const [isLoved, setIsLoved] = useState(post.isLoved);
   const [loveCount, setLoveCount] = useState(post.loveCount);
   const [loveBurst, setLoveBurst] = useState(false);
@@ -95,21 +97,25 @@ export default function PostCard({ post, showActions = true }: PostCardProps) {
 
   const handleLoveButton = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isLoved) {
-      setIsLoved(false);
-      setLoveCount(c => Math.max(0, c - 1));
-      unloveMutation.mutate({ id: post.id });
-    } else {
-      doLove();
-    }
+    guard(() => {
+      if (isLoved) {
+        setIsLoved(false);
+        setLoveCount(c => Math.max(0, c - 1));
+        unloveMutation.mutate({ id: post.id });
+      } else {
+        doLove();
+      }
+    });
   };
 
   // True double-click / double-tap to love — no ref timer needed
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    doLove();
-    setBigHeart(true);
-    setTimeout(() => setBigHeart(false), 800);
+    guard(() => {
+      doLove();
+      setBigHeart(true);
+      setTimeout(() => setBigHeart(false), 800);
+    });
   };
 
   const handleDelete = (e: React.MouseEvent) => {

@@ -2,11 +2,14 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { notificationsTable, usersTable, postsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
+router.use(requireAuth);
+
 router.get("/notifications", async (req, res) => {
-  const currentUserId = req.appUserId;
+  const currentUserId = req.appUserId!;
 
   const notifications = await db.select().from(notificationsTable)
     .where(eq(notificationsTable.userId, currentUserId))
@@ -41,7 +44,7 @@ router.get("/notifications", async (req, res) => {
 });
 
 router.put("/notifications/read", async (req, res) => {
-  const currentUserId = req.appUserId;
+  const currentUserId = req.appUserId!;
 
   await db.update(notificationsTable)
     .set({ isRead: true })

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable, followsTable, notificationsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { UpdateMeBody } from "@workspace/api-zod";
+import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
@@ -24,8 +25,8 @@ async function getFollowCounts(userId: number) {
   };
 }
 
-router.get("/users/me", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.get("/users/me", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1);
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
 
@@ -46,8 +47,8 @@ router.get("/users/me", async (req, res) => {
   });
 });
 
-router.put("/users/me", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.put("/users/me", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const parsed = UpdateMeBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
@@ -89,9 +90,11 @@ router.get("/users/:username", async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
 
-  const follow = await db.select().from(followsTable)
-    .where(and(eq(followsTable.followerId, currentUserId), eq(followsTable.followingId, user.id)))
-    .limit(1);
+  const follow = currentUserId === undefined
+    ? []
+    : await db.select().from(followsTable)
+        .where(and(eq(followsTable.followerId, currentUserId), eq(followsTable.followingId, user.id)))
+        .limit(1);
 
   const { followerCount, followingCount } = await getFollowCounts(user.id);
 
@@ -110,8 +113,8 @@ router.get("/users/:username", async (req, res) => {
   });
 });
 
-router.post("/users/:username/follow", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.post("/users/:username/follow", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const { username } = req.params;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
@@ -135,8 +138,8 @@ router.post("/users/:username/follow", async (req, res) => {
   res.json({ isFollowing: true });
 });
 
-router.delete("/users/:username/follow", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.delete("/users/:username/follow", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const { username } = req.params;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);

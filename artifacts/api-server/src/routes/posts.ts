@@ -4,6 +4,7 @@ import { postsTable, lovesTable, usersTable, notificationsTable } from "@workspa
 import { eq, desc, and, lt } from "drizzle-orm";
 import { CreatePostBody, ListPostsQueryParams } from "@workspace/api-zod";
 import { formatPost } from "./feed";
+import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
@@ -39,8 +40,8 @@ router.get("/posts", async (req, res) => {
   res.json({ posts: formatted, hasMore, nextCursor });
 });
 
-router.post("/posts", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.post("/posts", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const parsed = CreatePostBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid input" });
@@ -77,8 +78,8 @@ router.get("/posts/:id", async (req, res) => {
   res.json(formatted);
 });
 
-router.delete("/posts/:id", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.delete("/posts/:id", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -93,8 +94,8 @@ router.delete("/posts/:id", async (req, res) => {
   res.status(204).send();
 });
 
-router.post("/posts/:id/love", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.post("/posts/:id/love", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
@@ -128,8 +129,8 @@ router.post("/posts/:id/love", async (req, res) => {
   }
 });
 
-router.delete("/posts/:id/love", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.delete("/posts/:id/love", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 

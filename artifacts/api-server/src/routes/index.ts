@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { requireAuth } from "../middlewares/auth";
+import { optionalAuth } from "../middlewares/auth";
 import healthRouter from "./health";
 import feedRouter from "./feed";
 import postsRouter from "./posts";
@@ -13,8 +13,10 @@ const router: IRouter = Router();
 // Health check is always public
 router.use(healthRouter);
 
-// All other routes require authentication
-router.use(requireAuth);
+// Resolves req.appUserId when signed in but never blocks — guests can browse
+// public content (feed, posts, profiles). Individual write/personal routes
+// apply `requireAuth` themselves (see posts.ts, comments.ts, users.ts, etc).
+router.use(optionalAuth);
 
 router.use(feedRouter);
 router.use(postsRouter);

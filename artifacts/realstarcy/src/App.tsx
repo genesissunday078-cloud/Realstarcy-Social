@@ -16,7 +16,6 @@ import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
 import CreatorEarnings from "@/pages/CreatorEarnings";
 import GoLive from "@/pages/GoLive";
-import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import SearchPage from "@/pages/Search";
 
@@ -162,12 +161,15 @@ function ClerkQueryClientCacheInvalidator() {
 
 // ─── Routing ─────────────────────────────────────────────────────────────────
 
-// "/" → Feed when signed in, landing page when signed out
-function HomeRoute() {
+// TikTok-style access: anyone can browse the feed, trending, posts, profiles
+// and search without an account. Signing in is only required to interact
+// (love, comment, follow, post) or view personal areas (alerts, settings,
+// earnings, go live). Guarded actions redirect to /sign-in via <RequireAuthRoute>.
+function RequireAuthRoute({ component: Component }: { component: React.ComponentType }) {
   return (
     <>
-      <Show when="signed-in"><Feed /></Show>
-      <Show when="signed-out"><Login /></Show>
+      <Show when="signed-in"><Component /></Show>
+      <Show when="signed-out"><Redirect to="/sign-in" /></Show>
     </>
   );
 }
@@ -175,33 +177,40 @@ function HomeRoute() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={HomeRoute} />
-
       {/* REQUIRED: paths must be exactly "/sign-in/*?" and "/sign-up/*?" */}
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
 
-      {/* All remaining routes require auth */}
+      {/* Everything else shares the same Layout — public pages render for
+          guests too, only specific routes require a signed-in session. */}
       <Route>
-        <Show when="signed-in">
-          <Layout>
-            <Switch>
-              <Route path="/trending" component={Trending} />
-              <Route path="/create" component={CreatePost} />
-              <Route path="/post/:id" component={PostDetail} />
-              <Route path="/profile/:username" component={Profile} />
-              <Route path="/notifications" component={Notifications} />
-              <Route path="/settings" component={Settings} />
-              <Route path="/search" component={SearchPage} />
-              <Route path="/creator-earnings" component={CreatorEarnings} />
-              <Route path="/go-live" component={GoLive} />
-              <Route component={NotFound} />
-            </Switch>
-          </Layout>
-        </Show>
-        <Show when="signed-out">
-          <Redirect to="/sign-in" />
-        </Show>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Feed} />
+            <Route path="/trending" component={Trending} />
+            <Route path="/post/:id" component={PostDetail} />
+            <Route path="/profile/:username" component={Profile} />
+            <Route path="/search" component={SearchPage} />
+
+            <Route path="/create">
+              <RequireAuthRoute component={CreatePost} />
+            </Route>
+            <Route path="/notifications">
+              <RequireAuthRoute component={Notifications} />
+            </Route>
+            <Route path="/settings">
+              <RequireAuthRoute component={Settings} />
+            </Route>
+            <Route path="/creator-earnings">
+              <RequireAuthRoute component={CreatorEarnings} />
+            </Route>
+            <Route path="/go-live">
+              <RequireAuthRoute component={GoLive} />
+            </Route>
+
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
       </Route>
     </Switch>
   );

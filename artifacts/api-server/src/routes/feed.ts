@@ -3,12 +3,15 @@ import { db } from "@workspace/db";
 import { postsTable, lovesTable, usersTable, followsTable } from "@workspace/db";
 import { eq, desc, and, lt, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
-async function formatPost(post: typeof postsTable.$inferSelect, currentUserId: number) {
+async function formatPost(post: typeof postsTable.$inferSelect, currentUserId?: number) {
   const author = await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1);
-  const loved = await db.select().from(lovesTable).where(and(eq(lovesTable.postId, post.id), eq(lovesTable.userId, currentUserId))).limit(1);
+  const loved = currentUserId === undefined
+    ? []
+    : await db.select().from(lovesTable).where(and(eq(lovesTable.postId, post.id), eq(lovesTable.userId, currentUserId))).limit(1);
 
   return {
     id: post.id,
@@ -82,8 +85,8 @@ router.get("/stats", async (req, res) => {
   res.json({ totalPosts, totalUsers, totalLoves, newPostsToday });
 });
 
-router.get("/feed/following", async (req, res) => {
-  const currentUserId = req.appUserId;
+router.get("/feed/following", requireAuth, async (req, res) => {
+  const currentUserId = req.appUserId!;
   const limit = parseInt(req.query.limit as string) || 20;
   const cursor = req.query.cursor as string | undefined;
 

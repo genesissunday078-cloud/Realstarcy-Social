@@ -14,6 +14,8 @@ import {
   getListPostsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import PostCard from "@/components/PostCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +40,9 @@ export default function PostDetail() {
   const { data: comments, isLoading: commentsLoading } = useGetComments(postId, {
     query: { enabled: !!postId, queryKey: getGetCommentsQueryKey(postId) },
   });
-  const { data: me } = useGetMe();
+  const { isSignedIn } = useUser();
+  const { guard } = useAuthGuard();
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
 
   // Load feed to find prev/next post — use params in key for isolated cache
   const { data: feedData } = useGetFeed(
@@ -74,7 +78,7 @@ export default function PostDetail() {
   const handleComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    createComment.mutate({ id: postId, data: { content: commentText.trim() } });
+    guard(() => createComment.mutate({ id: postId, data: { content: commentText.trim() } }));
   };
 
   return (

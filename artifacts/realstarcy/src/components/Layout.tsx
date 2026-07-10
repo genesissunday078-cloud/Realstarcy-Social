@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useGetMe, useGetNotifications } from "@workspace/api-client-react";
+import { useUser } from "@clerk/react";
 import { motion } from "framer-motion";
 import { Home, TrendingUp, Bell, User, Settings, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,8 +12,9 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
-  const { data: me } = useGetMe();
-  const { data: notifications } = useGetNotifications();
+  const { isSignedIn } = useUser();
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
+  const { data: notifications } = useGetNotifications({ query: { enabled: !!isSignedIn } });
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0;
 
   const profileHref = me ? `/profile/${me.username}` : "/settings";

@@ -7,6 +7,7 @@ import {
   Music2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser } from "@clerk/react";
 import {
   useGetFeed, useGetFollowingFeed, useGetMe, useGetNotifications,
   useLovePost, useUnlovePost, useFollowUser, useUnfollowUser,
@@ -15,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import type { Post } from "@workspace/api-client-react";
 
 const GRADIENTS = [
@@ -199,6 +201,7 @@ interface SlideProps {
 
 function PostSlide({ post, index, isActive }: SlideProps) {
   const queryClient = useQueryClient();
+  const { guard } = useAuthGuard();
   const [isLoved, setIsLoved] = useState(post.isLoved);
   const [loveCount, setLoveCount] = useState(post.loveCount);
   const [loveBurst, setLoveBurst] = useState(false);
@@ -249,19 +252,23 @@ function PostSlide({ post, index, isActive }: SlideProps) {
   };
 
   const handleLoveButton = () => {
-    if (isLoved) {
-      unloveMutation.mutate({ id: post.id });
-    } else {
-      doLove();
-    }
+    guard(() => {
+      if (isLoved) {
+        unloveMutation.mutate({ id: post.id });
+      } else {
+        doLove();
+      }
+    });
   };
 
   const handleDoubleTap = () => {
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
-      doLove();
-      setBigHeart(true);
-      setTimeout(() => setBigHeart(false), 800);
+      guard(() => {
+        doLove();
+        setBigHeart(true);
+        setTimeout(() => setBigHeart(false), 800);
+      });
     }
     lastTapRef.current = now;
   };
@@ -317,8 +324,10 @@ function PostSlide({ post, index, isActive }: SlideProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (followed) unfollowMutation.mutate({ username: post.author.username });
-                else followMutation.mutate({ username: post.author.username });
+                guard(() => {
+                  if (followed) unfollowMutation.mutate({ username: post.author.username });
+                  else followMutation.mutate({ username: post.author.username });
+                });
               }}
               className={cn(
                 "absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shadow transition-all",
@@ -394,7 +403,7 @@ function PostSlide({ post, index, isActive }: SlideProps) {
             <>
               <span className="text-white/40 text-xs">·</span>
               <button
-                onClick={() => followMutation.mutate({ username: post.author.username })}
+                onClick={() => guard(() => followMutation.mutate({ username: post.author.username }))}
                 className="text-[#ff0050] text-xs font-bold hover:text-[#ff0050]/80"
               >
                 Follow
@@ -727,8 +736,9 @@ function CameraModal({ onClose }: { onClose: () => void }) {
 
 function BottomNav({ onCameraOpen }: { onCameraOpen: () => void }) {
   const [location] = useLocation();
-  const { data: me } = useGetMe();
-  const { data: notifications } = useGetNotifications();
+  const { isSignedIn } = useUser();
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
+  const { data: notifications } = useGetNotifications({ query: { enabled: !!isSignedIn } });
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0;
 
   const profileHref = me ? `/profile/${me.username}` : "/settings";
@@ -817,10 +827,12 @@ export default function Feed() {
   const [tab, setTab] = useState<FeedTab>("foryou");
   const [activeIndex, setActiveIndex] = useState(0);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const { isSignedIn } = useUser();
+  const { guard } = useAuthGuard();
   const { data: forYouData, isLoading: forYouLoading } = useGetFeed({ limit: 20 });
-  const { data: followingData, isLoading: followingLoading } = useGetFollowingFeed({ limit: 20 });
-  const { data: me } = useGetMe();
-  const { data: notifications } = useGetNotifications();
+  const { data: followingData, isLoading: followingLoading } = useGetFollowingFeed({ limit: 20 }, { query: { enabled: !!isSignedIn } });
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
+  const { data: notifications } = useGetNotifications({ query: { enabled: !!isSignedIn } });
   const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0;
   const scrollRef = useRef<HTMLDivElement>(null);
   const swipeStartX = useRef(0);
@@ -887,7 +899,14 @@ export default function Feed() {
 
         <div className="flex items-center gap-4 pointer-events-auto">
           {tabs.map((t, i) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className="relative flex flex-col items-center">
+            <button
+              key={t.key}
+              onClick={() => {
+                if (t.key === "following") guard(() => setTab(t.key));
+                else setTab(t.key);
+              }}
+              className="relative flex flex-col items-center"
+            >
               <span className={cn(
                 "text-[13px] font-semibold transition-colors leading-tight",
                 tab === t.key ? "text-white" : "text-white/45"

@@ -7,6 +7,8 @@ import {
   getGetUserProfileQueryKey, getListPostsQueryKey, getGetMeQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import PostCard from "@/components/PostCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,7 +78,9 @@ export default function Profile() {
     { userId: user?.id },
     { query: { enabled: !!user?.id, queryKey: getListPostsQueryKey({ userId: user?.id }) } }
   );
-  const { data: me } = useGetMe();
+  const { isSignedIn } = useUser();
+  const { guard } = useAuthGuard();
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
 
   useEffect(() => {
     if (user && editOpen) {
@@ -246,10 +250,10 @@ export default function Profile() {
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => user.isFollowing
+                  onClick={() => guard(() => user.isFollowing
                     ? unfollowMutation.mutate({ username: profileSlug! })
                     : followMutation.mutate({ username: profileSlug! })
-                  }
+                  )}
                   disabled={followMutation.isPending || unfollowMutation.isPending}
                   className={`px-8 py-2 rounded-lg text-sm font-bold transition-colors ${
                     user.isFollowing
