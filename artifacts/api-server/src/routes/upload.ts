@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import { randomUUID } from "crypto";
 import { requireAuth } from "../middlewares/auth";
-import { getBucket } from "../lib/firebase";
+import { getSupabase, SUPABASE_UPLOADS_BUCKET } from "../lib/supabase";
 
 const router = Router();
 
@@ -29,20 +29,25 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
   try {
     const ext = path.extname(req.file.originalname).toLowerCase() || ".bin";
-    const filename = `uploads/${Date.now()}-${randomUUID()}${ext}`;
-    const bucket = getBucket();
-    const blob = bucket.file(filename);
+    const filename = `${Date.now()}-${randomUUID()}${ext}`;
+    const supabase = getSupabase();
 
-    await blob.save(req.file.buffer, {
-      metadata: { contentType: req.file.mimetype },
-    });
-    await blob.makePublic();
+    const { error: uploadError } = await supabase.storage
+      .from(SUPABASE_UPLOADS_BUCKET)
+      .upload(filename, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
 
-    const url = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage.from(SUPABASE_UPLOADS_BUCKET).getPublicUrl(filename);
     const isVideo = req.file.mimetype.startsWith("video/");
-    res.json({ url, type: isVideo ? "video" : "image" });
+    res.json({ url: data.publicUrl, type: isVideo ? "video" : "image" });
   } catch (err) {
-    req.log?.error({ err }, "Failed to upload file to Firebase Storage");
+    req.log?.error({ err }, "Failed to upload file to Supabase Storage");
     res.status(500).json({ error: "Failed to upload file" });
   }
 });
