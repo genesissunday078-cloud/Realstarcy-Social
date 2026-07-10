@@ -11,13 +11,42 @@ function getFirebaseApp(): App {
       return app;
     }
 
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!raw) {
+      throw new Error("Missing FIREBASE_SERVICE_ACCOUNT_JSON secret");
+    }
+
+    let serviceAccount: { project_id: string; client_email: string; private_key: string };
+    const trimmed = raw.trim();
+    const candidates = [
+      trimmed,
+      trimmed.startsWith("{") ? trimmed : `{${trimmed}`,
+      trimmed.endsWith("}") ? trimmed : `${trimmed}}`,
+      !trimmed.startsWith("{") && !trimmed.endsWith("}") ? `{${trimmed}}` : null,
+    ].filter((c): c is string => c !== null);
+
+    let parsed: unknown;
+    for (const candidate of candidates) {
+      try {
+        parsed = JSON.parse(candidate);
+        break;
+      } catch {
+        // try next candidate
+      }
+    }
+
+    if (!parsed) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON");
+    }
+    serviceAccount = parsed as typeof serviceAccount;
+
+    const projectId = serviceAccount.project_id;
+    const clientEmail = serviceAccount.client_email;
+    const privateKey = serviceAccount.private_key;
 
     if (!projectId || !clientEmail || !privateKey) {
       throw new Error(
-        "Missing Firebase credentials: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY must be set",
+        "FIREBASE_SERVICE_ACCOUNT_JSON is missing project_id, client_email, or private_key",
       );
     }
 
