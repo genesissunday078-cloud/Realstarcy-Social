@@ -16,3 +16,6 @@ This project's code already had full Clerk wiring (proxy middleware, `clerkMiddl
 **Why:** the repo was imported/transplanted; secrets and DB state don't travel with source code.
 
 **How to apply:** When a user claims an integration "already works" but you see runtime errors (missing secret key, missing table), verify with the actual status check (`checkClerkManagementStatus`, `psql \dt`) rather than trusting the code or the user's claim. Fix is often just: run `setupClerkWhitelabelAuth()` and `drizzle-kit push` from `lib/db` — no code changes needed.
+
+## Re-import checklist (confirmed 2026-07-11)
+After a fresh GitHub import of this project, `node_modules` is absent too (`pnpm install` needed before `drizzle-kit push` will resolve). Full bring-up order: `pnpm install` → `setupClerkWhitelabelAuth()` → `pnpm --filter @workspace/db run push` → request `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` from user (no Replit connector for Supabase Storage) → restart workflows. The CameraModal/CreatePost Snapchat-style capture-review-filter-post flow is feature-complete code; don't assume "unfinished" claims about it without checking — it just needed the environment wired up.

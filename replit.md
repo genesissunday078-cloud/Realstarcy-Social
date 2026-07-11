@@ -10,7 +10,7 @@ A social media platform built on authenticity — share real moments, star what 
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` (Replit-managed), `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` (Replit-managed Clerk, provisioned automatically)
+- Required env: `DATABASE_URL` (Replit-managed), `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` (Replit-managed Clerk, provisioned automatically), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (user-provided, for `/api/upload` media storage)
 
 ## Stack
 
