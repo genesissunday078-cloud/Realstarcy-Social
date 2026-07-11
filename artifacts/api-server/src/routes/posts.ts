@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { postsTable, lovesTable, usersTable, notificationsTable } from "@workspace/db";
-import { eq, desc, and, lt } from "drizzle-orm";
+import { eq, desc, and, lt, sql } from "drizzle-orm";
 import { CreatePostBody, ListPostsQueryParams } from "@workspace/api-zod";
-import { formatPost } from "./feed";
+import { formatPost, formatPosts } from "./feed";
 import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
@@ -34,7 +34,7 @@ router.get("/posts", async (req, res) => {
 
   const hasMore = rows.length > limit;
   const slice = hasMore ? rows.slice(0, limit) : rows;
-  const formatted = await Promise.all(slice.map(p => formatPost(p, currentUserId)));
+  const formatted = await formatPosts(slice, currentUserId);
   const nextCursor = hasMore ? slice[slice.length - 1]?.createdAt.toISOString() ?? null : null;
 
   res.json({ posts: formatted, hasMore, nextCursor });
@@ -50,17 +50,21 @@ router.post("/posts", requireAuth, async (req, res) => {
 
   const { content, imageUrl, videoUrl, tags } = parsed.data;
 
-  const [post] = await db.insert(postsTable).values({
-    userId: currentUserId,
-    content,
-    imageUrl: imageUrl ?? null,
-    videoUrl: videoUrl ?? null,
-    tags: tags ?? [],
-  }).returning();
-
-  await db.update(usersTable)
-    .set({ postCount: (await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1))[0].postCount + 1 })
-    .where(eq(usersTable.id, currentUserId));
+  // Insert the post and bump postCount atomically/in parallel — the previous
+  // read-then-write on postCount serialized every post creation behind an
+  // extra round trip and was a race under concurrent posts.
+  const [[post]] = await Promise.all([
+    db.insert(postsTable).values({
+      userId: currentUserId,
+      content,
+      imageUrl: imageUrl ?? null,
+      videoUrl: videoUrl ?? null,
+      tags: tags ?? [],
+    }).returning(),
+    db.update(usersTable)
+      .set({ postCount: sql`${usersTable.postCount} + 1` })
+      .where(eq(usersTable.id, currentUserId)),
+  ]);
 
   const formatted = await formatPost(post, currentUserId);
   res.status(201).json(formatted);
@@ -83,13 +87,13 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  await db.delete(lovesTable).where(eq(lovesTable.postId, id));
-  await db.delete(postsTable).where(and(eq(postsTable.id, id), eq(postsTable.userId, currentUserId)));
-
-  const user = await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1);
-  if (user[0] && user[0].postCount > 0) {
-    await db.update(usersTable).set({ postCount: user[0].postCount - 1 }).where(eq(usersTable.id, currentUserId));
-  }
+  await Promise.all([
+    db.delete(lovesTable).where(eq(lovesTable.postId, id)),
+    db.delete(postsTable).where(and(eq(postsTable.id, id), eq(postsTable.userId, currentUserId))),
+    db.update(usersTable)
+      .set({ postCount: sql`greatest(${usersTable.postCount} - 1, 0)` })
+      .where(eq(usersTable.id, currentUserId)),
+  ]);
 
   res.status(204).send();
 });
@@ -107,21 +111,20 @@ router.post("/posts/:id/love", requireAuth, async (req, res) => {
     .limit(1);
 
   if (existing.length === 0) {
-    await db.insert(lovesTable).values({ userId: currentUserId, postId: id });
     const newCount = post.loveCount + 1;
-    await db.update(postsTable).set({ loveCount: newCount }).where(eq(postsTable.id, id));
-    await db.update(usersTable)
-      .set({ loveCount: (await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1))[0].loveCount + 1 })
-      .where(eq(usersTable.id, post.userId));
-
-    if (post.userId !== currentUserId) {
-      await db.insert(notificationsTable).values({
-        userId: post.userId,
-        type: "love",
-        fromUserId: currentUserId,
-        postId: id,
-      });
-    }
+    await Promise.all([
+      db.insert(lovesTable).values({ userId: currentUserId, postId: id }),
+      db.update(postsTable).set({ loveCount: sql`${postsTable.loveCount} + 1` }).where(eq(postsTable.id, id)),
+      db.update(usersTable).set({ loveCount: sql`${usersTable.loveCount} + 1` }).where(eq(usersTable.id, post.userId)),
+      post.userId !== currentUserId
+        ? db.insert(notificationsTable).values({
+            userId: post.userId,
+            type: "love",
+            fromUserId: currentUserId,
+            postId: id,
+          })
+        : Promise.resolve(),
+    ]);
 
     res.json({ loveCount: newCount, isLoved: true });
   } else {
@@ -142,14 +145,16 @@ router.delete("/posts/:id/love", requireAuth, async (req, res) => {
     .limit(1);
 
   if (existing.length > 0) {
-    await db.delete(lovesTable).where(and(eq(lovesTable.postId, id), eq(lovesTable.userId, currentUserId)));
     const newCount = Math.max(0, post.loveCount - 1);
-    await db.update(postsTable).set({ loveCount: newCount }).where(eq(postsTable.id, id));
-
-    const author = await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1);
-    if (author[0] && author[0].loveCount > 0) {
-      await db.update(usersTable).set({ loveCount: author[0].loveCount - 1 }).where(eq(usersTable.id, post.userId));
-    }
+    await Promise.all([
+      db.delete(lovesTable).where(and(eq(lovesTable.postId, id), eq(lovesTable.userId, currentUserId))),
+      db.update(postsTable)
+        .set({ loveCount: sql`greatest(${postsTable.loveCount} - 1, 0)` })
+        .where(eq(postsTable.id, id)),
+      db.update(usersTable)
+        .set({ loveCount: sql`greatest(${usersTable.loveCount} - 1, 0)` })
+        .where(eq(usersTable.id, post.userId)),
+    ]);
 
     res.json({ loveCount: newCount, isLoved: false });
   } else {

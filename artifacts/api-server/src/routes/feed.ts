@@ -8,29 +8,48 @@ import { requireAuth } from "../middlewares/auth";
 const router = Router();
 
 async function formatPost(post: typeof postsTable.$inferSelect, currentUserId?: number) {
-  const author = await db.select().from(usersTable).where(eq(usersTable.id, post.userId)).limit(1);
-  const loved = currentUserId === undefined
-    ? []
-    : await db.select().from(lovesTable).where(and(eq(lovesTable.postId, post.id), eq(lovesTable.userId, currentUserId))).limit(1);
+  const [formatted] = await formatPosts([post], currentUserId);
+  return formatted;
+}
 
-  return {
-    id: post.id,
-    userId: post.userId,
-    author: author[0] ? {
-      id: author[0].id,
-      username: author[0].username,
-      displayName: author[0].displayName,
-      avatar: author[0].avatar,
-    } : { id: 0, username: "unknown", displayName: "Unknown", avatar: "" },
-    content: post.content,
-    imageUrl: post.imageUrl ?? null,
-    videoUrl: post.videoUrl ?? null,
-    loveCount: post.loveCount,
-    commentCount: post.commentCount,
-    isLoved: loved.length > 0,
-    tags: post.tags ?? [],
-    createdAt: post.createdAt.toISOString(),
-  };
+// Batch version — avoids the N+1 author/love lookups that formatPost-per-post causes.
+// One query for all authors, one for all loved flags, regardless of feed size.
+async function formatPosts(posts: (typeof postsTable.$inferSelect)[], currentUserId?: number) {
+  if (posts.length === 0) return [];
+
+  const authorIds = Array.from(new Set(posts.map(p => p.userId)));
+  const authors = await db.select().from(usersTable).where(inArray(usersTable.id, authorIds));
+  const authorById = new Map(authors.map(a => [a.id, a]));
+
+  let lovedPostIds = new Set<number>();
+  if (currentUserId !== undefined) {
+    const postIds = posts.map(p => p.id);
+    const loves = await db.select({ postId: lovesTable.postId }).from(lovesTable)
+      .where(and(inArray(lovesTable.postId, postIds), eq(lovesTable.userId, currentUserId)));
+    lovedPostIds = new Set(loves.map(l => l.postId));
+  }
+
+  return posts.map(post => {
+    const author = authorById.get(post.userId);
+    return {
+      id: post.id,
+      userId: post.userId,
+      author: author ? {
+        id: author.id,
+        username: author.username,
+        displayName: author.displayName,
+        avatar: author.avatar,
+      } : { id: 0, username: "unknown", displayName: "Unknown", avatar: "" },
+      content: post.content,
+      imageUrl: post.imageUrl ?? null,
+      videoUrl: post.videoUrl ?? null,
+      loveCount: post.loveCount,
+      commentCount: post.commentCount,
+      isLoved: lovedPostIds.has(post.id),
+      tags: post.tags ?? [],
+      createdAt: post.createdAt.toISOString(),
+    };
+  });
 }
 
 router.get("/feed", async (req, res) => {
@@ -44,7 +63,7 @@ router.get("/feed", async (req, res) => {
   const hasMore = posts.length > limit;
   const slice = hasMore ? posts.slice(0, limit) : posts;
 
-  const formatted = await Promise.all(slice.map(p => formatPost(p, currentUserId)));
+  const formatted = await formatPosts(slice, currentUserId);
 
   const nextCursor = hasMore ? slice[slice.length - 1]?.createdAt.toISOString() ?? null : null;
 
@@ -55,20 +74,19 @@ router.get("/trending", async (req, res) => {
   const currentUserId = req.appUserId;
 
   const posts = await db.select().from(postsTable).orderBy(desc(postsTable.loveCount)).limit(10);
-  const formatted = await Promise.all(posts.map(p => formatPost(p, currentUserId)));
+  const formatted = await formatPosts(posts, currentUserId);
 
-  const tagCounts: Record<string, number> = {};
-  const allPosts = await db.select({ tags: postsTable.tags }).from(postsTable);
-  for (const p of allPosts) {
-    for (const tag of p.tags ?? []) {
-      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
-    }
-  }
+  // Aggregate tag counts in the DB via unnest instead of pulling every post's
+  // tags array into memory — scales with distinct tags, not total posts.
+  const tagRows = await db.execute<{ tag: string; count: number }>(sql`
+    select tag, count(*)::int as count
+    from ${postsTable}, unnest(${postsTable.tags}) as tag
+    group by tag
+    order by count desc
+    limit 15
+  `);
 
-  const tags = Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15)
-    .map(([tag, count]) => ({ tag, count }));
+  const tags = tagRows.rows.map(r => ({ tag: r.tag, count: r.count }));
 
   res.json({ posts: formatted, tags });
 });
@@ -114,11 +132,11 @@ router.get("/feed/following", requireAuth, async (req, res) => {
 
   const hasMore = posts.length > limit;
   const slice = hasMore ? posts.slice(0, limit) : posts;
-  const formatted = await Promise.all(slice.map(p => formatPost(p, currentUserId)));
+  const formatted = await formatPosts(slice, currentUserId);
   const nextCursor = hasMore ? slice[slice.length - 1]?.createdAt.toISOString() ?? null : null;
 
   res.json({ posts: formatted, hasMore, nextCursor });
 });
 
-export { formatPost };
+export { formatPost, formatPosts };
 export default router;

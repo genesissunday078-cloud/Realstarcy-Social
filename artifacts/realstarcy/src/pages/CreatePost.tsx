@@ -1,8 +1,13 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCreatePost, getGetFeedQueryKey, getListPostsQueryKey, getGetTrendingQueryKey, getGetFollowingFeedQueryKey } from "@workspace/api-client-react";
+import {
+  useCreatePost, useGetMe,
+  getGetFeedQueryKey, getListPostsQueryKey, getGetTrendingQueryKey, getGetFollowingFeedQueryKey,
+} from "@workspace/api-client-react";
+import type { PostFeed } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { X, ImagePlus, Tag, Loader2, Video } from "lucide-react";
@@ -12,6 +17,8 @@ import CameraModal from "@/components/CameraModal";
 export default function CreatePost() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const { isSignedIn } = useUser();
+  const { data: me } = useGetMe({ query: { enabled: !!isSignedIn } });
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
@@ -25,7 +32,45 @@ export default function CreatePost() {
 
   const createPost = useCreatePost({
     mutation: {
+      onMutate: async (variables) => {
+        // Cancel any in-flight feed refetches so they don't overwrite our optimistic entry.
+        await queryClient.cancelQueries({ queryKey: getGetFeedQueryKey() });
+
+        // Snapshot the current feed so we can roll back on error.
+        const previousFeed = queryClient.getQueryData<PostFeed>(getGetFeedQueryKey());
+
+        // Build a temporary optimistic post and prepend it immediately.
+        if (me) {
+          const optimisticPost = {
+            id: -Date.now(), // temporary negative ID — replaced on success
+            userId: me.id,
+            author: { id: me.id, username: me.username, displayName: me.displayName, avatar: me.avatar },
+            content: variables.data.content,
+            imageUrl: variables.data.imageUrl ?? null,
+            videoUrl: variables.data.videoUrl ?? null,
+            loveCount: 0,
+            commentCount: 0,
+            isLoved: false,
+            tags: variables.data.tags ?? [],
+            createdAt: new Date().toISOString(),
+          };
+          queryClient.setQueryData<PostFeed>(getGetFeedQueryKey(), (old) =>
+            old
+              ? { ...old, posts: [optimisticPost, ...old.posts] }
+              : { posts: [optimisticPost], hasMore: false, nextCursor: null }
+          );
+        }
+
+        return { previousFeed };
+      },
+      onError: (_err, _vars, context) => {
+        // Roll back to the snapshot if the mutation failed.
+        if (context?.previousFeed !== undefined) {
+          queryClient.setQueryData(getGetFeedQueryKey(), context.previousFeed);
+        }
+      },
       onSuccess: () => {
+        // Replace the optimistic entry with the real data from the server.
         queryClient.invalidateQueries({ queryKey: getGetFeedQueryKey() });
         queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTrendingQueryKey() });

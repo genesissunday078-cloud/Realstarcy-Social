@@ -2,3 +2,4 @@
 - [Realstarcy Clerk auth](realstarcy-clerk-auth.md) — JIT provisioning pattern, clerkClient singleton usage, DB migration approach
 - [Realstarcy public-browsing auth model](realstarcy-auth-gating.md) — optionalAuth vs requireAuth split, guest-safe queries, useAuthGuard for gated actions
 - [Realstarcy storage & provisioning](realstarcy-storage-and-provisioning.md) — uploads use Supabase Storage not local disk; imported repos may have unprovisioned Clerk/DB despite working code
+- [Realstarcy feed performance](feed-performance.md) — N+1 fix pattern, atomic increments, SQL tag aggregation, indexes, optimistic create
